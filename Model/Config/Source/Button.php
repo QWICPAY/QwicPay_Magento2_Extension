@@ -4,7 +4,7 @@ namespace Qwicpay\Checkout\Model\Config\Source;
 
 use Magento\Framework\Option\ArrayInterface;
 
-class Buttons implements ArrayInterface
+class Button implements ArrayInterface
 {
     public function toOptionArray()
     {

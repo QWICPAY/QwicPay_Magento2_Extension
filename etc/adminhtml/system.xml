@@ -16,7 +16,7 @@
         </field>
         <field id="button" translate="label" type="select" sortOrder="20" showInDefault="1" showInWebsite="1" showInStore="1">
           <label>Style</label>
-          <source_model>Qwicpay\Checkout\Model\Config\Source\Buttons</source_model>
+          <source_model>Qwicpay\Checkout\Model\Config\Source\Button</source_model>
         </field>
       </group>
 
