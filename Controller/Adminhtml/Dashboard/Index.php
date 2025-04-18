@@ -1,23 +1,24 @@
 <?php
+
 namespace Qwicpay\Checkout\Controller\Adminhtml\Dashboard;
 
 use Magento\Backend\App\Action;
-use Magento\Backend\App\Action\Context;
 use Magento\Framework\View\Result\PageFactory;
 
-class Map extends Action
+class Index extends Action
 {
     protected $resultPageFactory;
 
-    public function __construct(Context $context, PageFactory $resultPageFactory)
+    public function __construct(Action\Context $context, PageFactory $resultPageFactory)
     {
-        $this->resultPageFactory = $resultPageFactory;
         parent::__construct($context);
+        $this->resultPageFactory = $resultPageFactory;
     }
 
     public function execute()
     {
         $resultPage = $this->resultPageFactory->create();
+        $resultPage->setActiveMenu('Qwicpay_Checkout::qwicpay_dashboard');
         $resultPage->getConfig()->getTitle()->prepend(__('QwicPay Dashboard'));
         return $resultPage;
     }

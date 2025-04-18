@@ -1,0 +1,18 @@
+<?xml version="1.0"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Backend:etc/menu.xsd">
+    <menu>
+        <add id="Qwicpay_Checkout::qwicpay_root"
+             title="QwicPay"
+             module="Qwicpay_Checkout"
+             sortOrder="100"
+             resource="Qwicpay_Checkout::qwicpay_root"/>
+
+        <add id="Qwicpay_Checkout::qwicpay_dashboard"
+             title="Dashboard"
+             module="Qwicpay_Checkout"
+             sortOrder="10"
+             parent="Qwicpay_Checkout::qwicpay_root"
+             action="qwicpay/dashboard/index"
+             resource="Qwicpay_Checkout::qwicpay_dashboard"/>
+    </menu>
+</config>
