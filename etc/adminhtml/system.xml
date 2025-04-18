@@ -13,8 +13,8 @@
                 <field id="stage" translate="label" type="select" sortOrder="20" showInDefault="1" showInWebsite="1" showInStore="1">
                     <label>Stage</label>
                     <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
-                    <option id="test">Test</option>
-                    <option id="live">Live</option>
+                    <option value="0" translate="label">Test</option>
+                    <option value="1" translate="label">Live</option>
                 </field>
             </group>
         </section>
