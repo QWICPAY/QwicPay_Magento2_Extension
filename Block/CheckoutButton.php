@@ -50,4 +50,16 @@ class CheckoutButton extends Template
         // Construct and return the URL for redirecting to the QwicPay checkout
         return "http://localhost:3000/magento/checkout?cartId={$cartId}&merchantId={$merchantId}&stage={$stage}";
     }
+
+    /**
+     * Get the QwicPay Button URL.
+     * 
+     * @return string
+     */
+    public function getCheckoutUrl()
+    {
+        $url = $this->helper->getButton();
+
+        return $url
+    }
 }
