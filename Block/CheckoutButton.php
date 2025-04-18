@@ -56,7 +56,7 @@ class CheckoutButton extends Template
      * 
      * @return string
      */
-    public function getCheckoutUrl()
+    public function getButtonUrl()
     {
         $url = $this->helper->getButton();
 
