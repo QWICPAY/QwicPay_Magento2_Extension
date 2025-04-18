@@ -1,22 +1,50 @@
-<?xml version="1.0"?>
-<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Config:etc/system_file.xsd">
-    <system>
-        <section id="qwicpay" translate="label" type="text" sortOrder="900" showInDefault="1" showInWebsite="1" showInStore="1">
-            <label>QwicPay</label>
-            <tab>sales</tab>
-            <resource>Qwicpay_Checkout::config</resource>
-            <group id="general" translate="label" type="text" sortOrder="10" showInDefault="1" showInWebsite="1" showInStore="1">
-                <label>General</label>
-                <field id="merchant_id" translate="label" type="text" sortOrder="10" showInDefault="1" showInWebsite="1" showInStore="1">
-                    <label>Merchant ID</label>
-                </field>
-                <field id="stage" translate="label" type="select" sortOrder="20" showInDefault="1" showInWebsite="1" showInStore="1">
-                    <label>Stage</label>
-                    <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
-                    <option id="TEST">Test</option>
-                    <option id="PROD">Production</option>
-                </field>
-            </group>
-        </section>
-    </system>
-</config>
+<?php
+namespace Qwicpay\Checkout\Helper;
+
+use Magento\Framework\App\Helper\AbstractHelper;
+use Magento\Framework\App\Config\ScopeConfigInterface;
+
+class Data extends AbstractHelper
+{
+    const XML_PATH_MERCHANT_ID = 'qwicpay/general/merchant_id';
+    const XML_PATH_STAGE = 'qwicpay/general/stage';
+
+    protected $scopeConfig;
+
+    public function __construct(ScopeConfigInterface $scopeConfig)
+    {
+        $this->scopeConfig = $scopeConfig;
+    }
+
+    /**
+     * Get the QwicPay Merchant ID from configuration.
+     *
+     * @param int|null $storeId
+     * @return string|null
+     */
+    public function getMerchantId($storeId = null)
+    {
+        return $this->scopeConfig->getValue(
+            self::XML_PATH_MERCHANT_ID,
+            \Magento\Store\Model\ScopeInterface::SCOPE_STORE,
+            $storeId
+        );
+    }
+
+    /**
+     * Get the QwicPay Stage setting (Test or Production) from configuration.
+     *
+     * @param int|null $storeId
+     * @return string|null
+     */
+    public function getStage($storeId = null)
+    {
+        return $this->scopeConfig->getValue(
+            self::XML_PATH_STAGE,
+            \Magento\Store\Model\ScopeInterface::SCOPE_STORE,
+            $storeId
+        );
+    }
+
+    // You can add more helper methods here as your module grows
+}
