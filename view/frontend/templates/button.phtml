@@ -1,7 +1,9 @@
-<a href="<?= $block->getCheckoutUrl() ?>" class="action primary" style="display: inline-block;">
-    <img 
-        src="<?= $block->getButtonUrl() ?>" 
-        alt="Checkout with QwicPay" 
-        style="height: 40px; display: block;"
-    />
-</a>
+<?php if ($block->isQwicpayAvailable()): ?>
+    <a href="<?= $block->getCheckoutUrl() ?>" class="action primary">
+        <img 
+            src="<?= $block->getButtonUrl() ?>" 
+            alt="Checkout with QwicPay" 
+            style="height: 40px; display: block;" 
+        />
+    </a>
+<?php endif; ?>

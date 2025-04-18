@@ -7,24 +7,9 @@ use Qwicpay\Checkout\Helper\Data as QwicpayHelper;
 
 class CheckoutButton extends Template
 {
-    /**
-     * @var CheckoutSession
-     */
     protected $checkoutSession;
-
-    /**
-     * @var QwicpayHelper
-     */
     protected $helper;
 
-    /**
-     * CheckoutButton constructor.
-     *
-     * @param Template\Context $context
-     * @param CheckoutSession $checkoutSession
-     * @param QwicpayHelper $helper
-     * @param array $data
-     */
     public function __construct(
         Template\Context $context,
         CheckoutSession $checkoutSession,
@@ -36,30 +21,45 @@ class CheckoutButton extends Template
         parent::__construct($context, $data);
     }
 
-    /**
-     * Get the QwicPay checkout URL.
-     * 
-     * @return string
-     */
     public function getCheckoutUrl()
     {
-        $cartId = $this->checkoutSession->getQuote()->getId(); // Get current quote ID
-        $merchantId = $this->helper->getMerchantId(); // Get Merchant ID from system config
-        $stage = $this->helper->getStage(); // Get Stage from system config (test/live)
+        $cartId = $this->checkoutSession->getQuote()->getId();
+        $merchantId = $this->helper->getMerchantId();
+        $stage = $this->helper->getStage();
 
-        // Construct and return the URL for redirecting to the QwicPay checkout
         return "http://localhost:3000/magento/checkout?cartId={$cartId}&merchantId={$merchantId}&stage={$stage}";
     }
 
-    /**
-     * Get the QwicPay Button URL.
-     * 
-     * @return string
-     */
     public function getButtonUrl()
     {
         $url = $this->helper->getButton();
+        return $url;
+    }
 
-        return $url
+    /**
+     * Check if QwicPay service is up for this merchant.
+     *
+     * @return bool
+     */
+    public function isQwicpayAvailable(): bool
+    {
+        $merchantId = $this->helper->getMerchantId();
+        $url = "https://ice.qwicpay.com/isup/{$merchantId}";
+
+        $ch = curl_init($url);
+
+        curl_setopt_array($ch, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_TIMEOUT => 8,
+            CURLOPT_CONNECTTIMEOUT => 8,
+            CURLOPT_HEADER => true,
+            CURLOPT_NOBODY => true,
+        ]);
+
+        curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
+
+        return $httpCode === 200;
     }
 }
