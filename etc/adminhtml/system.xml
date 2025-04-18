@@ -12,7 +12,6 @@
         </field>
         <field id="stage" translate="label" type="select" sortOrder="20" showInDefault="1" showInWebsite="1" showInStore="1">
           <label>Stage</label>
-          <source_model>Magento\Config\Model\Config\Source\Select</source_model>
           <option value="TEST" translate="label">Test</option>
           <option value="PROD" translate="label">Production</option>
         </field>
