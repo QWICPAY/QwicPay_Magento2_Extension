@@ -1,6 +1,6 @@
 <?php
 
-namespace Qwicpay\Checkout\Model\Config\Stage;
+namespace Qwicpay\Checkout\Model\Config\Select;
 
 use Magento\Framework\Option\ArrayInterface;
 
