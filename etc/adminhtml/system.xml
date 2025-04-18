@@ -12,8 +12,7 @@
         </field>
         <field id="stage" translate="label" type="select" sortOrder="20" showInDefault="1" showInWebsite="1" showInStore="1">
           <label>Stage</label>
-          <option value="TEST" translate="label">Test</option>
-          <option value="PROD" translate="label">Production</option>
+          <source_model>Qwicpay\Checkout\Model\Config\Source\Stage</source_model>
         </field>
       </group>
     </section>
