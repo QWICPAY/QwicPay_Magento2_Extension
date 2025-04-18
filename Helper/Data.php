@@ -46,5 +46,5 @@ class Data extends AbstractHelper
         );
     }
 
-    // You can add more helper methods here as your module grows
+
 }
