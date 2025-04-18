@@ -4,6 +4,7 @@ namespace Qwicpay\Checkout\Model\Method;
 use Magento\Payment\Model\Method\AbstractMethod;
 use Magento\Payment\Model\Method\Adapter;
 use Magento\Framework\Phrase;
+use Magento\Quote\Api\Data\CartInterface; // Add this use statement
 
 class Qwicpay extends AbstractMethod
 {
@@ -16,10 +17,10 @@ class Qwicpay extends AbstractMethod
     /**
      * Check if the payment method can be used in checkout.
      *
-     * @param \Magento\Quote\Model\Quote $quote
+     * @param CartInterface|null $quote
      * @return bool
      */
-    public function isAvailable(\Magento\Quote\Model\Quote $quote = null)
+    public function isAvailable(CartInterface $quote = null)
     {
         // Disable for frontend checkout but allow API usage
         return false; // The payment method should not be available for frontend use
@@ -37,7 +38,7 @@ class Qwicpay extends AbstractMethod
 
     /**
      * This is a placeholder method to signify a payment has been chosen externally (on QwicPay).
-     * 
+     *
      * @param \Magento\Payment\Model\InfoInterface $payment
      * @param float $amount
      * @return \Magento\Payment\Model\Method\Adapter
@@ -50,7 +51,7 @@ class Qwicpay extends AbstractMethod
 
     /**
      * Capture method for the payment (again, not necessary for actual payment since it is done externally).
-     * 
+     *
      * @param \Magento\Payment\Model\InfoInterface $payment
      * @param float $amount
      * @return \Magento\Payment\Model\Method\Adapter
