@@ -4,6 +4,7 @@
         <resources>
             <resource id="Magento_Backend::admin">
                 <resource id="Qwicpay_Checkout::qwicpay_root" title="QwicPay" sortOrder="1000">
+                    <resource id="Qwicpay_Checkout::config" title="Configuration" />
                     <resource id="Qwicpay_Checkout::qwicpay_dashboard" title="Dashboard" />
                 </resource>
             </resource>
