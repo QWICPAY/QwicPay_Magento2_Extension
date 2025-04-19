@@ -7,10 +7,14 @@ use Magento\Framework\View\Result\PageFactory;
 
 class Index extends Action
 {
+    const ADMIN_RESOURCE = 'Qwicpay_Checkout::qwicpay_dashboard';
+
     protected $resultPageFactory;
 
-    public function __construct(Action\Context $context, PageFactory $resultPageFactory)
-    {
+    public function __construct(
+        Action\Context $context,
+        PageFactory $resultPageFactory
+    ) {
         parent::__construct($context);
         $this->resultPageFactory = $resultPageFactory;
     }
