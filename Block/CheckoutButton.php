@@ -62,4 +62,10 @@ class CheckoutButton extends Template
 
         return $httpCode === 200;
     }
+
+    public function getBaseCheckoutUrl()
+    {
+    return "http://localhost:3000/magento/checkout";
+    }
+
 }

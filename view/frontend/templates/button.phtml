@@ -1,10 +1,28 @@
-
 <?php if ($block->isQwicpayAvailable()): ?>
-    <a href="<?= $block->getCheckoutUrl() ?>" class="">
+    <a href="#" 
+       id="qwicpay-checkout-btn"
+       data-base-url="<?= $block->escapeHtml($block->getBaseCheckoutUrl()) ?>">
         <img 
             src="<?= $block->getButtonUrl() ?>" 
             alt="Checkout with QwicPay" 
             style="height: 40px; display: block;" 
         />
     </a>
+    <script>
+        require(['jquery'], function($) {
+            $('#qwicpay-checkout-btn').on('click', function (e) {
+                e.preventDefault();
+
+                $.getJSON('<?= $block->getUrl("qwicpay/checkout/cartinfo") ?>', function (data) {
+                    if (data.cartId) {
+                        const baseUrl = $('#qwicpay-checkout-btn').data('base-url');
+                        const url = `${baseUrl}?cartId=${data.cartId}&merchantId=${data.merchantId}&stage=${data.stage}`;
+                        window.location.href = url;
+                    } else {
+                        alert('Failed to retrieve cart information.');
+                    }
+                });
+            });
+        });
+    </script>
 <?php endif; ?>
