@@ -5,7 +5,7 @@
         <payment>
             <qwicpay>
                 <active>1</active>
-                <model>QwicPay\Payment\Model\QwicPay</model>
+                <model>Qwicpay\Checkout\Model\QwicPay</model>
                 <title>QwicPay</title>
                 <order_status>pending</order_status>
                 <is_gateway>0</is_gateway>
