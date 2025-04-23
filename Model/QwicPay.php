@@ -3,8 +3,7 @@ namespace Qwicpay\Checkout\Model;
 
 use Magento\Payment\Model\Method\AbstractMethod;
 use Magento\Quote\Api\Data\CartInterface;
-use Magento\Framework\App\State;
-use Magento\Framework\Webapi\Rest\Request as RestRequest;
+use Magento\Framework\App\RequestInterface;
 
 class QwicPay extends AbstractMethod
 {
@@ -13,8 +12,7 @@ class QwicPay extends AbstractMethod
     protected $_canUseCheckout = false;
     protected $_canUseInternal = false;
 
-    protected $appState;
-    protected $restRequest;
+    protected $request;
 
     public function __construct(
         \Magento\Framework\Model\Context $context,
@@ -24,8 +22,7 @@ class QwicPay extends AbstractMethod
         \Magento\Payment\Helper\Data $paymentData,
         \Magento\Framework\App\Config\ScopeConfigInterface $scopeConfig,
         \Magento\Payment\Model\Method\Logger $logger,
-        State $appState,
-        RestRequest $restRequest,
+        RequestInterface $request,
         array $data = []
     ) {
         parent::__construct(
@@ -40,16 +37,17 @@ class QwicPay extends AbstractMethod
             null,
             $data
         );
-        $this->appState = $appState;
-        $this->restRequest = $restRequest;
+        $this->request = $request;
     }
 
     public function isAvailable(CartInterface $quote = null)
     {
-        // Check if it's a REST request
-        if ($this->appState->getAreaCode() === \Magento\Framework\App\Area::AREA_WEBAPI_REST) {
-            return true;
-        }
+        // $path = $this->request->getPathInfo();
+
+        // // Enable only for REST API routes
+        // if (strpos($path, '/rest/') !== false || strpos($path, '/V1/') !== false) {
+        //     return true;
+        // }
 
         return false;
     }
