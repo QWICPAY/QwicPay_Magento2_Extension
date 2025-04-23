@@ -42,13 +42,13 @@ class QwicPay extends AbstractMethod
 
     public function isAvailable(CartInterface $quote = null)
     {
-        // $path = $this->request->getPathInfo();
+        $path = $this->request->getPathInfo();
 
-        // // Enable only for REST API routes
-        // if (strpos($path, '/rest/') !== false || strpos($path, '/V1/') !== false) {
-        //     return true;
-        // }
+        // Enable only for REST API routes
+        if (strpos($path, '/rest/') !== false || strpos($path, '/V1/') !== false) {
+            return true;
+        }
 
-        return true;
+        return false;
     }
 }
