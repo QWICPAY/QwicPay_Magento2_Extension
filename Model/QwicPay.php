@@ -49,6 +49,6 @@ class QwicPay extends AbstractMethod
         //     return true;
         // }
 
-        return false;
+        return true;
     }
 }
