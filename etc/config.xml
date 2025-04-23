@@ -12,7 +12,7 @@
                 <can_authorize>0</can_authorize>
                 <can_capture>0</can_capture>
                 <can_refund>0</can_refund>
-                <can_use_checkout>0</can_use_checkout> <!-- Not visible in frontend -->
+                <can_use_checkout>1</can_use_checkout>
                 <can_use_internal>1</can_use_internal>
                 <can_use_for_multishipping>1</can_use_for_multishipping>
             </qwicpay>
