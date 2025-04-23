@@ -9,8 +9,8 @@ class QwicPay extends AbstractMethod
 {
     protected $_code = 'qwicpay';
     protected $_isOffline = true;
-    protected $_canUseCheckout = false;
-    protected $_canUseInternal = false;
+    protected $_canUseCheckout = true;
+    protected $_canUseInternal = true;
 
     protected $request;
 
