@@ -27,7 +27,7 @@ class CheckoutButton extends Template
         $merchantId = $this->helper->getMerchantId();
         $stage = $this->helper->getStage();
 
-        return "http://localhost:3000/magento/checkout?cartId={$cartId}&merchantId={$merchantId}&stage={$stage}";
+        return "http://localhost:3000/app/magento/checkout?cartId={$cartId}&merchantId={$merchantId}&stage={$stage}";
     }
 
     public function getButtonUrl()
