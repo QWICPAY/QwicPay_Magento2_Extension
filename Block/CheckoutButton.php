@@ -21,14 +21,7 @@ class CheckoutButton extends Template
         parent::__construct($context, $data);
     }
 
-    public function getCheckoutUrl()
-    {
-        $cartId = $this->checkoutSession->getQuote()->getId();
-        $merchantId = $this->helper->getMerchantId();
-        $stage = $this->helper->getStage();
-
-        return "http://localhost:3000/app/magento/checkout?cartId={$cartId}&merchantId={$merchantId}&stage={$stage}";
-    }
+  
 
     public function getButtonUrl()
     {
@@ -65,7 +58,7 @@ class CheckoutButton extends Template
 
     public function getBaseCheckoutUrl()
     {
-    return "http://localhost:3000/magento/checkout";
+    return "http://localhost:3000/app/magento/checkout";
     }
 
 }
