@@ -21,8 +21,6 @@ class CheckoutButton extends Template
         parent::__construct($context, $data);
     }
 
-  
-
     public function getButtonUrl()
     {
         $url = $this->helper->getButton();
