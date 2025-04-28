@@ -24,6 +24,7 @@ class Track extends Action
         $orderId = $this->getRequest()->getParam('order_id');
         $email = $this->getRequest()->getParam('email');
         $lastname = $this->getRequest()->getParam('lastname');
+        $zip = $this->getRequest()->getParam('zip');
 
         if (!$orderId || !$email || !$lastname) {
             return $this->_redirect('/');
@@ -36,8 +37,9 @@ class Track extends Action
         $html .= '<input type="hidden" name="form_key" value="' . htmlspecialchars($formKey) . '" />';
         $html .= '<input type="hidden" name="oar_order_id" value="' . htmlspecialchars($orderId) . '" />';
         $html .= '<input type="hidden" name="oar_billing_lastname" value="' . htmlspecialchars($lastname) . '" />';
-        $html .= '<input type="hidden" name="oar_type" value="email" />';
         $html .= '<input type="hidden" name="oar_email" value="' . htmlspecialchars($email) . '" />';
+        $html .= '<input type="hidden" name="oar_zip" value="' . htmlspecialchars($zip) . '" />'; // <-- new!
+        $html .= '<input type="hidden" name="oar_type" value="email" />';
         $html .= '</form>';
         $html .= '<script type="text/javascript">document.getElementById("trackform").submit();</script>';
         $html .= '</body></html>';
