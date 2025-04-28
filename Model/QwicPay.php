@@ -4,10 +4,10 @@ namespace Qwicpay\Checkout\Model;
 use Magento\Payment\Model\Method\AbstractMethod;
 use Magento\Quote\Api\Data\CartInterface;
 use Magento\Framework\App\RequestInterface;
-
 use Magento\Payment\Model\InfoInterface;
 use Magento\Framework\Exception\LocalizedException;
 use Magento\Framework\HTTP\Client\Curl;
+use Magento\Sales\Model\Order;
 
 class QwicPay extends AbstractMethod
 {
@@ -19,6 +19,8 @@ class QwicPay extends AbstractMethod
 
     protected $request;
     protected $curl;
+
+    protected $validIps = null;
 
     public function __construct(
         \Magento\Framework\Model\Context $context,
@@ -51,45 +53,57 @@ class QwicPay extends AbstractMethod
     public function isAvailable(CartInterface $quote = null)
     {
         $path = $this->request->getPathInfo();
+        $clientIp = $this->request->getClientIp();
 
-        // Enable only for REST API routes
-        if (strpos($path, '/rest/') !== false || strpos($path, '/V1/') !== false) {
-            return true;
+        // Only allow if request is from REST API
+        if (strpos($path, '/rest/') === false && strpos($path, '/V1/') === false) {
+            return false;
         }
 
-        return false;
+        // Check if IP is valid
+        if (!$this->isValidIp($clientIp)) {
+            return false;
+        }
+
+        return true;
+    }
+
+    public function isValidIp($ip)
+    {
+        if ($this->validIps === null) {
+            try {
+                $this->curl->get('https://ice.qwicpay.com/paymentips');
+                $response = $this->curl->getBody();
+                $data = json_decode($response, true);
+                if (isset($data['iplist']) && is_array($data['iplist'])) {
+                    $this->validIps = $data['iplist'];
+                } else {
+                    $this->validIps = [];
+                }
+            } catch (\Exception $e) {
+                // If any error fetching IP list, default to empty list
+                $this->validIps = [];
+            }
+        }
+
+        return in_array($ip, $this->validIps);
+    }
+
+    /**
+     * Force order to 'processing' instead of 'pending'
+     */
+    public function getOrderPlaceRedirectUrl()
+    {
+        return null; // No redirect needed
     }
 
     public function authorize(InfoInterface $payment, $amount)
     {
-        $additionalData = $payment->getAdditionalInformation();
-        if (!is_array($additionalData) || count($additionalData) < 2) {
-            throw new LocalizedException(__('Invalid payment data.'));
+        $order = $payment->getOrder();
+        if ($order) {
+            $order->setState(Order::STATE_PROCESSING)
+                  ->setStatus(Order::STATE_PROCESSING); // or use custom status if needed
         }
-
-        $transactionId = $additionalData[0] ?? null;
-        $paymentRef = $additionalData[1] ?? null;
-        $merchantId = $additionalData[2] ?? null;
-
-        if (!$paymentRef || !$merchantId) {
-            throw new LocalizedException(__('Missing required data.'));
-        }
-
-        $this->curl->addHeader("Content-Type", "application/json");
-        $this->curl->post("http://localhost:3000/app/magento/redeem", json_encode([
-            'merchantId' => $merchantId,
-            'paymentRef' => $paymentRef
-        ]));
-
-        $response = json_decode($this->curl->getBody(), true);
-
-        if (!isset($response['status']) || $response['status'] != 1) {
-            throw new LocalizedException(__('Payment not approved by QwicPay.'));
-        }
-
-        $payment->setTransactionId($paymentRef);
-        $payment->setIsTransactionClosed(0);
-
         return $this;
     }
 }
