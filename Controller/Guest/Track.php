@@ -3,16 +3,20 @@ namespace Qwicpay\Checkout\Controller\Guest;
 
 use Magento\Framework\App\Action\Action;
 use Magento\Framework\App\Action\Context;
+use Magento\Framework\Data\Form\FormKey\Validator as FormKeyValidator;
+use Magento\Framework\Data\Form\FormKey;
 use Magento\Framework\Controller\ResultFactory;
 
 class Track extends Action
 {
-    protected $resultFactory;
+    protected $formKey;
 
     public function __construct(
-        Context $context
+        Context $context,
+        FormKey $formKey
     ) {
         parent::__construct($context);
+        $this->formKey = $formKey;
     }
 
     public function execute()
@@ -22,12 +26,14 @@ class Track extends Action
         $lastname = $this->getRequest()->getParam('lastname');
 
         if (!$orderId || !$email || !$lastname) {
-            // Redirect to homepage if missing info
             return $this->_redirect('/');
         }
 
+        $formKey = $this->formKey->getFormKey(); // Generate a valid form_key
+
         $html = '<html><body>';
         $html .= '<form id="trackform" action="' . $this->_url->getUrl('sales/guest/view') . '" method="POST">';
+        $html .= '<input type="hidden" name="form_key" value="' . htmlspecialchars($formKey) . '" />';
         $html .= '<input type="hidden" name="oar_order_id" value="' . htmlspecialchars($orderId) . '" />';
         $html .= '<input type="hidden" name="oar_billing_lastname" value="' . htmlspecialchars($lastname) . '" />';
         $html .= '<input type="hidden" name="oar_type" value="email" />';
