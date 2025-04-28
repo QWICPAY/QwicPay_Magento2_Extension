@@ -16,7 +16,7 @@
                 $.getJSON('<?= $block->getUrl("qwicpay/checkout/cartinfo") ?>', function (data) {
                     if (data.cartId) {
                         const baseUrl = $('#qwicpay-checkout-btn').data('base-url');
-                        const url = `${baseUrl}?cartId=${data.cartId}&merchantId=${data.merchantId}&stage=${data.stage}`;
+                        const url = `${baseUrl}?cartId=${data.cartId}&merchantId=${data.merchantId}`;
                         window.location.href = url;
                     } else {
                         alert('Failed to retrieve cart information.');

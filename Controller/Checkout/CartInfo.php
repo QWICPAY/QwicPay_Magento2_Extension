@@ -35,7 +35,7 @@ class CartInfo extends Action
         return $result->setData([
             'cartId' => $cartId,
             'merchantId' => $this->helper->getMerchantId(),
-            'stage' => $this->helper->getStage()
+            
         ]);
     }
 }
