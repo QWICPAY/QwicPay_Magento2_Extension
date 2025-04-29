@@ -56,7 +56,7 @@ class CheckoutButton extends Template
 
     public function getBaseCheckoutUrl()
     {
-    return "http://localhost:3000/app/magento/checkout";
+    return "https://ice.qwicpay.com/app/magento/checkout";
     }
 
 }
