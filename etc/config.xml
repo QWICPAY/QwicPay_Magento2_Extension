@@ -7,7 +7,7 @@
                 <active>1</active>
                 <model>Qwicpay\Checkout\Model\QwicPay</model>
                 <title>QwicPay</title>
-                <order_status>pending</order_status>
+                <order_status>processing</order_status>
                 <is_gateway>1</is_gateway>
                 <can_authorize>1</can_authorize>
                 <can_capture>1</can_capture>
