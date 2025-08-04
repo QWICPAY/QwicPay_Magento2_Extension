@@ -10,11 +10,22 @@
         <field id="merchant_id" translate="label" type="text" sortOrder="10" showInDefault="1" showInWebsite="1" showInStore="1">
           <label>Merchant ID</label>
         </field>
+
+        <field id="merchant_key" translate="label" type="obscure" sortOrder="20" showInDefault="1" showInWebsite="1" showInStore="1">
+          <label>Merchant Key</label>
+        </field>
+
+        <field id="stage" translate="label" type="select" sortOrder="25" showInDefault="1" showInWebsite="1" showInStore="1">
+          <label>Stage</label>
+          <source_model>Qwicpay\Checkout\Model\Config\Source\Stage</source_model>
+        </field>
         
         <field id="button" translate="label" type="select" sortOrder="30" showInDefault="1" showInWebsite="1" showInStore="1">
           <label>Style</label>
           <source_model>Qwicpay\Checkout\Model\Config\Source\Button</source_model>
         </field>
+
+
       </group>
 
     </section>
