@@ -19,7 +19,12 @@
           <label>Stage</label>
           <source_model>Qwicpay\Checkout\Model\Config\Source\Stage</source_model>
         </field>
-        
+
+        <field id="active_one" translate="label" type="select" sortOrder="5" showInDefault="1" showInWebsite="1" showInStore="1">
+          <label>Enable QwicPay ONE</label>
+          <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+        </field>
+
         <field id="button" translate="label" type="select" sortOrder="30" showInDefault="1" showInWebsite="1" showInStore="1">
           <label>Style</label>
           <source_model>Qwicpay\Checkout\Model\Config\Source\Button</source_model>
@@ -28,6 +33,16 @@
 
       </group>
 
+    </section>
+
+    <section id="payment">
+      <group id="qwicpay_one" translate="label" type="text" sortOrder="900" showInDefault="1" showInWebsite="1" showInStore="1">
+        <label>QwicPay ONE</label>
+        <field id="active" translate="label" type="select" sortOrder="10" showInDefault="1" showInWebsite="1" showInStore="1">
+          <label>Enable</label>
+          <source_model>Magento\Config\Model\Config\Source\Yesno</source_model>
+        </field>
+      </group>
     </section>
   </system>
 </config>

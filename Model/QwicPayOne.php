@@ -5,6 +5,7 @@ use Magento\Payment\Model\Method\AbstractMethod;
 use Magento\Quote\Api\Data\CartInterface;
 use Magento\Payment\Model\InfoInterface;
 use Magento\Sales\Model\Order;
+use Magento\Store\Model\ScopeInterface;
 
 class QwicPayOne extends AbstractMethod
 {
@@ -13,10 +14,11 @@ class QwicPayOne extends AbstractMethod
     protected $_canUseCheckout = true;
     protected $_canUseInternal = false;
     protected $_canAuthorize = true;
+    protected $_isActive = true;
 
     public function isAvailable(CartInterface $quote = null)
     {
-        return parent::isAvailable($quote);
+        return true;
     }
 
     public function authorize(InfoInterface $payment, $amount)
