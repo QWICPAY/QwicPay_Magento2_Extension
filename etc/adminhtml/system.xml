@@ -30,9 +30,7 @@
           <source_model>Qwicpay\Checkout\Model\Config\Source\Button</source_model>
         </field>
 
-
       </group>
-
     </section>
 
     <section id="payment">
