@@ -1,35 +1,126 @@
 <?xml version="1.0"?>
+<!--
+/**
+ * Copyright © 2016 Magento. All rights reserved.
+ * See COPYING.txt for license details.
+ */
+-->
+
 <config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="urn:magento:framework:ObjectManager/etc/config.xsd">
-
-  <virtualType name="QwicPayOne" type="Magento\Payment\Model\Method\Adapter">
+  <!-- Payment Method Facade configuration -->
+  <virtualType name="QwicpayOneGatewayFacade" type="Magento\Payment\Model\Method\Adapter">
     <arguments>
-      <argument name="code" xsi:type="string">qwicpay_one</argument>
-      <argument name="valueHandlerPool" xsi:type="object">QwicPayOneValueHandelerPool</argument>
-
-      <argument name="formBlockType" xsi:type="string">Magento\Payment\Block\Form\Cc</argument>
-      <argument name="infoBlockType" xsi:type="string">Magento\Payment\Block\Info</argument>
-      
+      <argument name="code" xsi:type="const">\Qwicpay\Checkout\Model\Ui\ConfigProvider::CODE</argument>
+      <argument name="formBlockType" xsi:type="string">Magento\Payment\Block\Form</argument>
+      <argument name="infoBlockType" xsi:type="string">Qwicpay\Checkout\Block\Info</argument>
+      <argument name="valueHandlerPool" xsi:type="object">QwicpayOneGatewayValueHandlerPool</argument>
+      <argument name="commandPool" xsi:type="object">QwicpayOneGatewayCommandPool</argument>
     </arguments>
   </virtualType>
 
-  <virtualType name="QwicPayOneValueHandelerPool" type="Magento\Payment\Gateway\Config\ValueHandlerPool">
+  <!-- Configuration reader -->
+  <virtualType name="QwicpayOneGatewayConfig" type="Magento\Payment\Gateway\Config\Config">
     <arguments>
-      <argument name="handlers" xsi:type="array">
-        <item name="default" xsi:type="string">QwicPayOneConfigValueHandeler</item>
+      <argument name="methodCode" xsi:type="const">\Qwicpay\Checkout\Model\Ui\ConfigProvider::CODE</argument>
+    </arguments>
+  </virtualType>
+
+  <!-- Logger, initialized with PaymentGatewayConfig -->
+  <virtualType name="QwicpayOneGatewayLogger" type="Magento\Payment\Model\Method\Logger">
+    <arguments>
+      <argument name="config" xsi:type="object">QwicpayOneGatewayConfig</argument>
+    </arguments>
+  </virtualType>
+
+  <type name="Qwicpay\Checkout\Gateway\Http\Client\ClientMock">
+    <arguments>
+      <argument name="logger" xsi:type="object">QwicpayOneGatewayLogger</argument>
+    </arguments>
+  </type>
+
+  <!-- Commands infrastructure -->
+  <virtualType name="QwicpayOneGatewayCommandPool" type="Magento\Payment\Gateway\Command\CommandPool">
+    <arguments>
+      <argument name="commands" xsi:type="array">
+        <item name="authorize" xsi:type="string">QwicpayOneGatewayAuthorizeCommand</item>
+        <item name="capture" xsi:type="string">QwicpayOneGatewayCaptureCommand</item>
       </argument>
     </arguments>
   </virtualType>
 
-  <virtualType name="QwicPayOneConfigValueHandeler" type="Magento\Payment\Gateway\Config\ConfigValueHandler">
+  <!-- Authorize command -->
+  <virtualType name="QwicpayOneGatewayAuthorizeCommand" type="Magento\Payment\Gateway\Command\GatewayCommand">
     <arguments>
-      <argument name="configInterface" xsi:type="object">QwicPayOneGatewayConfig</argument>
+      <argument name="requestBuilder" xsi:type="object">QwicpayOneGatewayAuthorizationRequest</argument>
+      <argument name="handler" xsi:type="object">QwicpayOneGatewayResponseHandlerComposite</argument>
+      <argument name="transferFactory" xsi:type="object">Qwicpay\Checkout\Gateway\Http\TransferFactory</argument>
+      <argument name="client" xsi:type="object">Qwicpay\Checkout\Gateway\Http\Client\ClientMock</argument>
     </arguments>
   </virtualType>
 
-  <virtualType name="QwicPayOneGatewayConfig" type="Magento\Payment\Gateway\Config\Config">
+  <!-- Authorization Request -->
+  <virtualType name="QwicpayOneGatewayAuthorizationRequest" type="Magento\Payment\Gateway\Request\BuilderComposite">
     <arguments>
-      <argument name="methodCode" xsi:type="string">qwicpay_one</argument>
+      <argument name="builders" xsi:type="array">
+        <item name="transaction" xsi:type="string">Qwicpay\Checkout\Gateway\Request\AuthorizationRequest</item>
+        <item name="mockData" xsi:type="string">Qwicpay\Checkout\Gateway\Request\MockDataRequest</item>
+      </argument>
     </arguments>
   </virtualType>
+  <type name="Qwicpay\Checkout\Gateway\Request\AuthorizationRequest">
+    <arguments>
+      <argument name="config" xsi:type="object">QwicpayOneGatewayConfig</argument>
+    </arguments>
+  </type>
+
+  <!-- Capture command -->
+  <virtualType name="QwicpayOneGatewayCaptureCommand" type="Magento\Payment\Gateway\Command\GatewayCommand">
+    <arguments>
+      <argument name="requestBuilder" xsi:type="object">Qwicpay\Checkout\Gateway\Request\CaptureRequest</argument>
+      <argument name="handler" xsi:type="object">Qwicpay\Checkout\Gateway\Response\TxnIdHandler</argument>
+      <argument name="transferFactory" xsi:type="object">Qwicpay\Checkout\Gateway\Http\TransferFactory</argument>
+      <argument name="validator" xsi:type="object">Qwicpay\Checkout\Gateway\Validator\ResponseCodeValidator</argument>
+      <argument name="client" xsi:type="object">Qwicpay\Checkout\Gateway\Http\Client\ClientMock</argument>
+    </arguments>
+  </virtualType>
+
+  <!-- Capture Request -->
+  <type name="Qwicpay\Checkout\Gateway\Request\CaptureRequest">
+    <arguments>
+      <argument name="config" xsi:type="object">QwicpayOneGatewayConfig</argument>
+    </arguments>
+  </type>
+
+
+
+  <!-- Response handlers -->
+  <virtualType name="QwicpayOneGatewayResponseHandlerComposite" type="Magento\Payment\Gateway\Response\HandlerChain">
+    <arguments>
+      <argument name="handlers" xsi:type="array">
+        <item name="txnid" xsi:type="string">Qwicpay\Checkout\Gateway\Response\TxnIdHandler</item>
+        <item name="fraud" xsi:type="string">Qwicpay\Checkout\Gateway\Response\FraudHandler</item>
+      </argument>
+    </arguments>
+  </virtualType>
+
+  <!-- Value handlers infrastructure -->
+  <virtualType name="QwicpayOneGatewayValueHandlerPool" type="Magento\Payment\Gateway\Config\ValueHandlerPool">
+    <arguments>
+      <argument name="handlers" xsi:type="array">
+        <item name="default" xsi:type="string">QwicpayOneGatewayConfigValueHandler</item>
+      </argument>
+    </arguments>
+  </virtualType>
+  <virtualType name="QwicpayOneGatewayConfigValueHandler" type="Magento\Payment\Gateway\Config\ConfigValueHandler">
+    <arguments>
+      <argument name="configInterface" xsi:type="object">QwicpayOneGatewayConfig</argument>
+    </arguments>
+  </virtualType>
+
+  <type name="Qwicpay\Checkout\Block\Info">
+    <arguments>
+      <argument name="config" xsi:type="object">QwicpayOneGatewayConfig</argument>
+    </arguments>
+  </type>
 
 </config>

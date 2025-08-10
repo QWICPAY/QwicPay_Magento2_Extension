@@ -1,22 +1,36 @@
 <?php
+/**
+ * Copyright © 2016 Magento. All rights reserved.
+ * See COPYING.txt for license details.
+ */
 namespace Qwicpay\Checkout\Model\Ui;
 
 use Magento\Checkout\Model\ConfigProviderInterface;
+use Qwicpay\Checkout\Gateway\Http\Client\ClientMock;
 
-class ConfigProvider implements ConfigProviderInterface
+/**
+ * Class ConfigProvider
+ */
+final class ConfigProvider implements ConfigProviderInterface
 {
-    public const CODE = 'qwicpay_one';
+    const CODE = 'qwicpay_one';
 
+    /**
+     * Retrieve assoc array of checkout configuration
+     *
+     * @return array
+     */
     public function getConfig()
     {
-    return [
-        'payment' => [
-            'qwicpay_one' => [
-                'redirectUrl' => 'https://example.com/redirect',
-                'title'       => 'QwicPay ONE',
-                'isActive'    => true,
+        return [
+            'payment' => [
+                self::CODE => [
+                    'transactionResults' => [
+                        ClientMock::SUCCESS => __('Success'),
+                        ClientMock::FAILURE => __('Fraud')
+                    ]
+                ]
             ]
-        ]
-    ];
-}
+        ];
+    }
 }
