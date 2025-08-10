@@ -15,15 +15,18 @@ class CreateCmsBlock implements DataPatchInterface
     }
 
     public function apply()
-    {
+{
+    $block = $this->blockFactory->create()->load('qwicpay_checkout_button', 'identifier');
+    if (!$block->getId()) {
         $this->blockFactory->create()->setData([
             'title' => 'QwicPay Checkout Button',
             'identifier' => 'qwicpay_checkout_button',
             'content' => '{{block class="Qwicpay\\Checkout\\Block\\CheckoutButton" template="Qwicpay_Checkout::button.phtml"}}',
             'is_active' => 1,
-            'stores' => [Store::DEFAULT_STORE_ID]
+            'stores' => [\Magento\Store\Model\Store::DEFAULT_STORE_ID]
         ])->save();
     }
+}
 
     public static function getDependencies() { return []; }
     public function getAliases() { return []; }

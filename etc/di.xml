@@ -1,0 +1,35 @@
+<?xml version="1.0"?>
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="urn:magento:framework:ObjectManager/etc/config.xsd">
+
+  <virtualType name="QwicPayOne" type="Magento\Payment\Model\Method\Adapter">
+    <arguments>
+      <argument name="code" xsi:type="string">qwicpay_one</argument>
+      <argument name="valueHandlerPool" xsi:type="object">QwicPayOneValueHandelerPool</argument>
+
+      <argument name="formBlockType" xsi:type="string">Magento\Payment\Block\Form\Cc</argument>
+      <argument name="infoBlockType" xsi:type="string">Magento\Payment\Block\Info</argument>
+      
+    </arguments>
+  </virtualType>
+
+  <virtualType name="QwicPayOneValueHandelerPool" type="Magento\Payment\Gateway\Config\ValueHandlerPool">
+    <arguments>
+      <argument name="handlers" xsi:type="array">
+        <item name="default" xsi:type="string">QwicPayOneConfigValueHandeler</item>
+      </argument>
+    </arguments>
+  </virtualType>
+
+  <virtualType name="QwicPayOneConfigValueHandeler" type="Magento\Payment\Gateway\Config\ConfigValueHandler">
+    <arguments>
+      <argument name="configInterface" xsi:type="object">QwicPayOneGatewayConfig</argument>
+    </arguments>
+  </virtualType>
+
+  <virtualType name="QwicPayOneGatewayConfig" type="Magento\Payment\Gateway\Config\Config">
+    <arguments>
+      <argument name="methodCode" xsi:type="string">qwicpay_one</argument>
+    </arguments>
+  </virtualType>
+
+</config>

@@ -1,34 +1,11 @@
-<div class="qwicpay-one-method"
-     style="background: radial-gradient(circle at right center, #ba9fe6 0%, #8bbff7 10%, #ffffff 30%, #ffffff 100%);
-            padding: 16px;
-            border-radius: 8px;
-            border: 1px solid #dce9f9;
-            font-size: 14px;
-            color: #333;
-            line-height: 1.5;
-            font-family: 'Instrument Sans', sans-serif;">
-
-    <!-- Label section -->
-    <div style="display:flex; align-items:center; justify-content:space-between; width:100%;">
-        <div style="display:flex; align-items:center; gap:12px; flex:1;">
-            <img data-bind="attr: {src: window.checkoutConfig.payment.qwicpay_one.icon, alt: getTitle() }"
-                 style="width:24px; height:24px; border-radius:50%; object-fit:cover; box-shadow:0 0px 6px rgba(0,0,0,0.1);" />
-            <span style="font-size:16px; font-weight:600; color:#1a1a1a;"> 
-                <!-- ko text: getTitle() --><!-- /ko -->
-            </span>
-        </div>
-        <div style="display:flex; align-items:center; gap:8px;">
-            <!-- ko foreach: getIcons() -->
-            <img data-bind="attr: {src: src, alt: alt}" style="height:30px; margin-left:8px; object-fit:contain;" />
-            <!-- /ko -->
-        </div>
+<!-- ko template: getTemplate() --><!-- /ko -->
+<div class="payment-method" data-bind="css: {'_active': isChecked()}">
+    <div class="payment-method-title field choice">
+        <input type="radio"
+               name="payment[method]"
+               data-bind="attr: {'id': getCode()}, value: getCode(), checked: isChecked, click: selectPaymentMethod, visible: isRadioButtonVisible()" />
+        <label data-bind="attr: {'for': getCode()}">
+            <span data-bind="text: getTitle()"></span>
+        </label>
     </div>
-
-    <!-- Description -->
-    <p style="margin-top:12px;">QwicPay Instant Payment Ecosystem</p>
-    <ul style="padding-left:20px; margin:8px 0 0;">
-        <li>Credit &amp; Debit cards</li>
-        <li>Apple Pay &amp; Samsung Pay</li>
-        <li>Cards stored across any QwicPay merchant</li>
-    </ul>
 </div>

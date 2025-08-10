@@ -1,16 +1,18 @@
 <?xml version="1.0"?>
 <config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="urn:magento:framework:ObjectManager/etc/config.xsd">
-    <!-- Original QwicPay -->
+
     <type name="Qwicpay\Checkout\Model\QwicPay">
         <arguments>
             <argument name="curl" xsi:type="object">Magento\Framework\HTTP\Client\Curl</argument>
         </arguments>
     </type>
 
-    <!-- New QwicPay ONE -->
-    <type name="Qwicpay\Checkout\Model\QwicPayOne">
+    <type name="Magento\Checkout\Model\CompositeConfigProvider">
         <arguments>
-            <argument name="curl" xsi:type="object">Magento\Framework\HTTP\Client\Curl</argument>
+            <argument name="configProviders" xsi:type="array">
+                <item name="qwicpay_one" xsi:type="object">Qwicpay\Checkout\Model\Ui\ConfigProvider</item>
+            </argument>
         </arguments>
     </type>
+
 </config>
