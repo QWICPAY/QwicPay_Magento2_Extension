@@ -1,17 +1,22 @@
 <?php
-/**
- * Copyright © 2016 Magento. All rights reserved.
- * See COPYING.txt for license details.
- */
 namespace Qwicpay\Checkout\Gateway\Validator;
 
 use Magento\Payment\Gateway\Validator\AbstractValidator;
 use Magento\Payment\Gateway\Validator\ResultInterface;
+use Magento\Payment\Gateway\Validator\ResultInterfaceFactory;
 use Qwicpay\Checkout\Gateway\Http\Client\ClientMock;
 
 class ResponseCodeValidator extends AbstractValidator
 {
     const RESULT_CODE = 'RESULT_CODE';
+
+    /**
+     * @param ResultInterfaceFactory $resultFactory
+     */
+    public function __construct(ResultInterfaceFactory $resultFactory)
+    {
+        parent::__construct($resultFactory);
+    }
 
     /**
      * Performs validation of result code
