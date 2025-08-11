@@ -1,49 +1,36 @@
 <?php
-/**
- * Copyright © 2016 Magento. All rights reserved.
- * See COPYING.txt for license details.
- */
 namespace Qwicpay\Checkout\Gateway\Http;
 
 use Magento\Payment\Gateway\Http\TransferBuilder;
 use Magento\Payment\Gateway\Http\TransferFactoryInterface;
-use Magento\Payment\Gateway\Http\TransferInterface;
-use Qwicpay\Checkout\Gateway\Request\MockDataRequest;
+use Magento\Framework\App\Config\ScopeConfigInterface;
 
 class TransferFactory implements TransferFactoryInterface
 {
-    /**
-     * @var TransferBuilder
-     */
-    private $transferBuilder;
+    protected $transferBuilder;
+    protected $scopeConfig;
 
-    /**
-     * @param TransferBuilder $transferBuilder
-     */
     public function __construct(
-        TransferBuilder $transferBuilder
+        TransferBuilder $transferBuilder,
+        ScopeConfigInterface $scopeConfig
     ) {
         $this->transferBuilder = $transferBuilder;
+        $this->scopeConfig = $scopeConfig;
     }
 
-    /**
-     * Builds gateway transfer object
-     *
-     * @param array $request
-     * @return TransferInterface
-     */
     public function create(array $request)
     {
+        $merchantId = $this->scopeConfig->getValue('qwicpay/general/merchant_id');
+        $merchantKey = $this->scopeConfig->getValue('qwicpay/general/merchant_key');
+        $stage = $this->scopeConfig->getValue('qwicpay/general/stage');
+
+        $request['merchant_id'] = $merchantId;
+        $request['merchant_key'] = $merchantKey;
+        $request['stage'] = $stage;
+
         return $this->transferBuilder
             ->setBody($request)
             ->setMethod('POST')
-            ->setHeaders(
-                [
-                    'force_result' => isset($request[MockDataRequest::FORCE_RESULT])
-                        ? $request[MockDataRequest::FORCE_RESULT]
-                        : null
-                ]
-            )
             ->build();
     }
 }

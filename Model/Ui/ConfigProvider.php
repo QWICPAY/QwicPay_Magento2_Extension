@@ -1,19 +1,25 @@
 <?php
-/**
- * Copyright © 2016 Magento. All rights reserved.
- * See COPYING.txt for license details.
- */
 namespace Qwicpay\Checkout\Model\Ui;
 
 use Magento\Checkout\Model\ConfigProviderInterface;
-use Qwicpay\Checkout\Gateway\Http\Client\ClientMock;
 
-/**
- * Class ConfigProvider
- */
 final class ConfigProvider implements ConfigProviderInterface
 {
     const CODE = 'qwicpay_one';
+
+    /**
+     * @var \Magento\Framework\UrlInterface
+     */
+    private $urlBuilder;
+
+    /**
+     * @param \Magento\Framework\UrlInterface $urlBuilder
+     */
+    public function __construct(
+        \Magento\Framework\UrlInterface $urlBuilder
+    ) {
+        $this->urlBuilder = $urlBuilder;
+    }
 
     /**
      * Retrieve assoc array of checkout configuration
@@ -25,10 +31,12 @@ final class ConfigProvider implements ConfigProviderInterface
         return [
             'payment' => [
                 self::CODE => [
-                    'transactionResults' => [
-                        ClientMock::SUCCESS => __('Success'),
-                        ClientMock::FAILURE => __('Fraud')
-                    ]
+                    // URL the frontend JS will call to start the QwicPay redirect flow
+                    'redirectUrl' => $this->urlBuilder->getUrl('qwicpay/redirect/start'),
+                    
+                    // Optional: pass display labels or config for checkout UI
+                    'label'       => __('QwicPay Secure Payment'),
+                    'description' => __('Pay securely using QwicPay. You will be redirected to complete your payment.')
                 ]
             ]
         ];
