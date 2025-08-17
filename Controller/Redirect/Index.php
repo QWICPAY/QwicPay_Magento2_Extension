@@ -1,4 +1,5 @@
 <?php
+// File: app/code/Qwicpay/Checkout/Controller/Redirect/Index.php
 namespace Qwicpay\Checkout\Controller\Redirect;
 
 use Magento\Checkout\Model\Session as CheckoutSession;

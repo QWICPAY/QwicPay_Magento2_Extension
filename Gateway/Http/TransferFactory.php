@@ -22,11 +22,9 @@ class TransferFactory implements TransferFactoryInterface
     {
         $merchantId = $this->scopeConfig->getValue('qwicpay/general/merchant_id');
         $merchantKey = $this->scopeConfig->getValue('qwicpay/general/merchant_key');
-        $stage = $this->scopeConfig->getValue('qwicpay/general/stage');
 
         $request['merchant_id'] = $merchantId;
         $request['merchant_key'] = $merchantKey;
-        $request['stage'] = $stage;
 
         return $this->transferBuilder
             ->setBody($request)

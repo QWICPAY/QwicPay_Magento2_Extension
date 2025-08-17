@@ -1,19 +1,30 @@
 <?php
-/**
- * Copyright © 2016 Magento. All rights reserved.
- * See COPYING.txt for license details.
- */
+// File: app/code/Qwicpay/Checkout/Gateway/Response/TxnIdHandler.php
 namespace Qwicpay\Checkout\Gateway\Response;
 
-use Magento\Payment\Gateway\Data\PaymentDataObjectInterface;
 use Magento\Payment\Gateway\Response\HandlerInterface;
+use Magento\Payment\Gateway\Helper\SubjectReader;
+use Psr\Log\LoggerInterface;
 
 class TxnIdHandler implements HandlerInterface
 {
-    const TXN_ID = 'TXN_ID';
+    /**
+     * @var LoggerInterface
+     */
+    protected $logger;
 
     /**
-     * Handles transaction id
+     * TxnIdHandler constructor.
+     * @param LoggerInterface $logger
+     */
+    public function __construct(
+        LoggerInterface $logger
+    ) {
+        $this->logger = $logger;
+    }
+
+    /**
+     * Handles the transaction ID from the gateway response.
      *
      * @param array $handlingSubject
      * @param array $response
@@ -21,19 +32,21 @@ class TxnIdHandler implements HandlerInterface
      */
     public function handle(array $handlingSubject, array $response)
     {
-        if (!isset($handlingSubject['payment'])
-            || !$handlingSubject['payment'] instanceof PaymentDataObjectInterface
-        ) {
-            throw new \InvalidArgumentException('Payment data object should be provided');
+        $this->logger->info('Qwicpay TxnIdHandler: Starting handler.');
+        
+        $paymentDataObject = SubjectReader::readPayment($handlingSubject);
+        $payment = $paymentDataObject->getPayment();
+        $payment->setTransactionId(null);
+
+        if (isset($response['transactionid']) && !empty($response['transactionid'])) {
+            $transactionId = $response['transactionid'];
+            $payment->setTransactionId($transactionId);
+            $payment->setIsTransactionClosed(false);
+            $this->logger->info('Qwicpay TxnIdHandler: Transaction ID ' . $transactionId . ' saved to order.');
+        } else {
+            $this->logger->error('Qwicpay TxnIdHandler: Transaction ID is missing from the response.');
         }
 
-        /** @var PaymentDataObjectInterface $paymentDO */
-        $paymentDO = $handlingSubject['payment'];
-
-        $payment = $paymentDO->getPayment();
-
-        /** @var $payment \Magento\Sales\Model\Order\Payment */
-        $payment->setTransactionId($response[self::TXN_ID]);
-        $payment->setIsTransactionClosed(false);
+        $this->logger->info('Qwicpay TxnIdHandler: Handler finished.');
     }
 }

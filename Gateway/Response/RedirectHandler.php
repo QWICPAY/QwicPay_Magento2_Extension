@@ -1,19 +1,53 @@
 <?php
+// File: app/code/Qwicpay/Checkout/Gateway/Response/RedirectHandler.php
 namespace Qwicpay\Checkout\Gateway\Response;
 
 use Magento\Payment\Gateway\Response\HandlerInterface;
-use Magento\Sales\Api\OrderRepositoryInterface;
+use Magento\Payment\Gateway\Helper\SubjectReader;
+use Psr\Log\LoggerInterface;
 
 class RedirectHandler implements HandlerInterface
 {
+    /**
+     * @var LoggerInterface
+     */
+    protected $logger;
+
+    /**
+     * RedirectHandler constructor.
+     * @param LoggerInterface $logger
+     */
+    public function __construct(
+        LoggerInterface $logger
+    ) {
+        $this->logger = $logger;
+    }
+
+    /**
+     * Handles the redirect URL from the gateway response.
+     *
+     * @param array $handlingSubject
+     * @param array $response
+     * @return void
+     */
     public function handle(array $handlingSubject, array $response)
     {
+        $this->logger->info('Qwicpay RedirectHandler: Starting handler.');
+        $this->logger->info('Qwicpay RedirectHandler: Response received -> ' . json_encode($response));
+
         if (!isset($response['url'])) {
+            $this->logger->critical('Qwicpay RedirectHandler: Redirect URL is missing from the response.');
             throw new \InvalidArgumentException('No redirect URL from QwicPay');
         }
 
-        /** @var \Magento\Sales\Model\Order\Payment $payment */
-        $payment = $handlingSubject['payment']->getPayment();
-        $payment->setAdditionalInformation('redirect_url', $response['url']);
+        $paymentDataObject = SubjectReader::readPayment($handlingSubject);
+        $payment = $paymentDataObject->getPayment();
+        
+        $redirectUrl = $response['url'];
+
+        $payment->setAdditionalInformation('redirect_url', $redirectUrl);
+        $this->logger->info('Qwicpay RedirectHandler: Saved redirect URL ' . $redirectUrl . ' to order.');
+
+        $this->logger->info('Qwicpay RedirectHandler: Handler finished.');
     }
 }
