@@ -71,18 +71,17 @@ class RedirectRequest implements BuilderInterface
             $orderIncrementId = $order->getOrderIncrementId();
             $this->logger->info('Qwicpay RedirectRequest: Order data received for ID ' . $orderIncrementId);
 
-            // --- Log User Info ---
             $userPayload = [
                 "name" => $billingAddress->getFirstname(),
                 "surname" => $billingAddress->getLastname(),
                 "email" => $billingAddress->getEmail()
             ];
-            $this->logger->info('Qwicpay RedirectRequest: User payload -> ' . json_encode($userPayload));
+            
             if (json_last_error() !== JSON_ERROR_NONE) {
                 $this->logger->critical('Qwicpay RedirectRequest: JSON error in user data: ' . json_last_error_msg());
             }
 
-            // --- Log Billing Info ---
+            
             $billingPayload = [
                 "street" => implode(', ', $billingAddress->getStreet()),
                 "city" => $billingAddress->getCity(),
@@ -90,14 +89,14 @@ class RedirectRequest implements BuilderInterface
                 "country" => $billingAddress->getCountryId(),
                 "cell" => $billingAddress->getTelephone()
             ];
-            $this->logger->info('Qwicpay RedirectRequest: Billing payload -> ' . json_encode($billingPayload));
+            
             if (json_last_error() !== JSON_ERROR_NONE) {
                 $this->logger->critical('Qwicpay RedirectRequest: JSON error in billing data: ' . json_last_error_msg());
             }
 
-            // --- Log Items Array ---
+            
             $items = [];
-            $this->logger->info('Qwicpay RedirectRequest: Starting item processing loop.');
+            
             foreach ($order->getItems() as $item) {
                 // Skip child items of configurable/bundle products to prevent duplicates
                 if ($item->getParentItem()) {
@@ -116,10 +115,10 @@ class RedirectRequest implements BuilderInterface
                     'quantity' => (int)$item->getQtyOrdered(),
                 ];
                 $items[] = $itemArray;
-                $this->logger->info('Qwicpay RedirectRequest: Added item ' . $item->getSku() . ' to payload.');
+                
             }
             $this->logger->info('Qwicpay RedirectRequest: Finished item processing. Total items added: ' . count($items));
-            $this->logger->info('Qwicpay RedirectRequest: Items array payload -> ' . json_encode($items));
+            
             if (json_last_error() !== JSON_ERROR_NONE) {
                 $this->logger->critical('Qwicpay RedirectRequest: JSON error in items data: ' . json_last_error_msg());
             }
@@ -129,10 +128,9 @@ class RedirectRequest implements BuilderInterface
             $this->logger->info('Qwicpay RedirectRequest: Retrieved stage from config -> ' . $stage);
 
 
-            // --- Log Payment Info ---
-            $this->logger->info('Qwicpay RedirectRequest: Start Payment Calculations ');
+            
+            
             $totalAmount = $order->getGrandTotalAmount()*100;
-            $this->logger->info('Qwicpay RedirectRequest: Payment Total -> ' . json_encode($totalAmount));
             $paymentPayload = [
                 "amount" => $totalAmount,
                 "currency" => $order->getCurrencyCode()
@@ -147,11 +145,11 @@ class RedirectRequest implements BuilderInterface
                 'qwicpay/callback/index',
                 ['_secure' => true]
             );
-            $this->logger->info('Qwicpay RedirectRequest: Generated callback URL: ' . $callbackUrl);
+            
             
             // Build the final request payload
             $payload = [
-                "platform" => "API",
+                "platform" => "MAGENTO",
                 "stage" => $stage, 
                 "orderNumber" => $orderIncrementId,
                 "user" => $userPayload,

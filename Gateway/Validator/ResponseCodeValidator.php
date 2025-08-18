@@ -37,7 +37,7 @@ class ResponseCodeValidator extends AbstractValidator
      */
     public function validate(array $validationSubject)
     {
-        $this->logger->info('Qwicpay Validator: Starting validation.');
+        
         $this->logger->info('Qwicpay Validator: Validation subject -> ' . json_encode($validationSubject));
 
         if (!isset($validationSubject['response']) || !is_array($validationSubject['response'])) {
@@ -46,10 +46,10 @@ class ResponseCodeValidator extends AbstractValidator
         }
 
         $response = $validationSubject['response'];
-        $this->logger->info('Qwicpay Validator: Extracted response -> ' . json_encode($response));
+        
 
         $isValid = false;
-        $this->logger->info('Qwicpay Validator: Initial isValid state is ' . ($isValid ? 'true' : 'false'));
+        
 
         // Check for 'url' key, which indicates a successful transaction creation
         if (isset($response['url'])) {

@@ -32,7 +32,7 @@ class RedirectHandler implements HandlerInterface
      */
     public function handle(array $handlingSubject, array $response)
     {
-        $this->logger->info('Qwicpay RedirectHandler: Starting handler.');
+
         $this->logger->info('Qwicpay RedirectHandler: Response received -> ' . json_encode($response));
 
         if (!isset($response['url'])) {

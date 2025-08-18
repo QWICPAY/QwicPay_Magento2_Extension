@@ -123,13 +123,10 @@ class Index extends Action implements CsrfAwareActionInterface
 
         try {
 
-            $merchantKey = $this->scopeConfig->getValue(
-                'payment/qwicpay/merchant_key',
-                \Magento\Store\Model\ScopeInterface::SCOPE_STORE
-            );
+            
             // Get the raw JSON body from the request
             $requestBody = $this->getRequest()->getContent();
-            $this->logger->info('Qwicpay Callback: Received raw request body: ' . $requestBody);
+            
 
             $payload = json_decode($requestBody, true);
             $this->logger->info('Qwicpay Callback: Attempting to decode JSON payload.');
@@ -153,14 +150,10 @@ class Index extends Action implements CsrfAwareActionInterface
                 'qwicpay/general/merchant_key',
                 \Magento\Store\Model\ScopeInterface::SCOPE_STORE
             );
-            $this->logger->info('Qwicpay Callback: Loaded merchant_key from config.');
-            $this->logger->info('Qwicpay Callback: Merchant Key = ' . $merchantKey);
+            
 
             // Read KEY header from request
             $requestKey = $this->getRequest()->getHeader('KEY');
-
-
-            $this->logger->info('Qwicpay Callback: KEY header received = ' . $requestKey);
 
             // Compare keys
             if (!$requestKey || $requestKey !== $merchantKey) {
@@ -186,8 +179,7 @@ class Index extends Action implements CsrfAwareActionInterface
             $transactionStatus = (int) $payload['payment']['transactionStatus'];
             $transactionId = $payload['payment']['paymentRef'] ?? $payload['transactionid'] ?? uniqid('qwicpay_');
 
-            // Load the order by increment ID using a search criteria filter
-            $this->logger->info('Qwicpay Callback: Attempting to load order with ID: ' . $orderNumber);
+            
             $searchCriteria = $this->searchCriteriaBuilder
                 ->addFilter('increment_id', $orderNumber)
                 ->create();

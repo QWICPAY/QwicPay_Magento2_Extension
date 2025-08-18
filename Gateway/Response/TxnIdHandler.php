@@ -32,7 +32,7 @@ class TxnIdHandler implements HandlerInterface
      */
     public function handle(array $handlingSubject, array $response)
     {
-        $this->logger->info('Qwicpay TxnIdHandler: Starting handler.');
+        
         
         $paymentDataObject = SubjectReader::readPayment($handlingSubject);
         $payment = $paymentDataObject->getPayment();
@@ -47,6 +47,6 @@ class TxnIdHandler implements HandlerInterface
             $this->logger->error('Qwicpay TxnIdHandler: Transaction ID is missing from the response.');
         }
 
-        $this->logger->info('Qwicpay TxnIdHandler: Handler finished.');
+        
     }
 }

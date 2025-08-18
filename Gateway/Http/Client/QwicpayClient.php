@@ -29,13 +29,13 @@ class QwicpayClient implements ClientInterface
      */
     public function placeRequest(TransferInterface $transferObject)
     {
-        $endpoint = "https://ice.qwicpay.com/one/merchant/payment"; // change to PROD in live mode
+        $endpoint = "https://ice.qwicpay.com/one/merchant/payment"; 
         $body = json_encode($transferObject->getBody()['payload']);
 
         $merchantId = $transferObject->getBody()['merchant_id'];
         $merchantKey = $transferObject->getBody()['merchant_key'];
         
-        $this->logger->info("Qwicpay Request Endpoint: " . $endpoint);
+        
         $this->logger->info("Qwicpay Request Body: " . $body);
 
         $this->curl->addHeader("Content-Type", "application/json");
