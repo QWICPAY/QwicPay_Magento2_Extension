@@ -1,7 +1,7 @@
 
 # QwicPay Magento 2 Checkout Integration
 
-This guide provides step-by-step instructions for developers to install, configure, and activate the QwicPay Instant Checkout module for Magento 2.
+This guide provides step-by-step instructions for developers to install, configure, and activate the QwicPay Instant Checkout and Payment Gateway module for Magento 2.
 
 ---
 
@@ -35,23 +35,51 @@ This guide provides step-by-step instructions for developers to install, configu
    php bin/magento setup:di:compile
    ```
 
----
-
 ## ⚙️ Configuration
 
-1. Go to your **Magento Admin Panel**
+### General QwicPay Settings
+1. Go to your **Magento Admin Panel**  
 2. Navigate to:  
-   `Stores` → `Configuration` → `Sales` → `QwicPay`
+   `Stores` → `Configuration` → `Sales` → `QwicPay`  
 
-3. Enter your **Merchant ID**,  
-   Choose your preferred **Button Style**,  
-   Then click **Save Config**
+3. Enter your:  
+   - **Merchant ID**  
+   - **Merchant Key**  
+   - Select **Stage** (Sandbox or Production)  
+   - Choose your preferred **Button Style**  
 
-4. Magento may prompt you to **Flush Cache**.
+4. Click **Save Config**  
+5. Magento may prompt you to **Flush Cache**  
 
-> ✅ The QwicPay Checkout Button Block should now be available under `Content → Blocks`
+> ✅ The QwicPay Instant Checkout Button Block will now be available under  
+  `Content → Blocks`  
 
 ---
+
+### 💳 QwicPay ONE (Payment Method)
+1. Go to:  
+   `Stores` → `Configuration` → `Sales` → `Payment Methods`  
+
+2. Scroll down to **QwicPay ONE**  
+3. Set **Enable** to **Yes**  
+4. Save Config & **Flush Cache**  
+
+> Once enabled, QwicPay ONE will appear as a payment method during checkout.
+
+---
+
+## 📊 Access QwicPay Merchant Portal from Admin
+
+You can now access your **QwicPay Merchant Access Portal** directly from the Magento Admin Panel:
+
+Navigate to: 
+`Admin Page → Navbar → QwicPay → Dashboard`
+
+This will take you directly to your merchant dashboard where you can your manage your QwicPay transactions.
+
+---
+
+ ⚠️ The following settings are **only required if you intend to use the QwicPay Instant Checkout Cart Block**  
 
 
 
@@ -117,16 +145,6 @@ To proceed, click the **Flush Magento Cache** button to ensure your updates are 
 - The QwicPay button will launch in **Test Mode** by default.
 - Once your integration is complete, please **contact us** to switch your button to **Production Mode**.
 
----
-
-## 📊 Access QwicPay Merchant Portal from Admin
-
-You can now access your **QwicPay Merchant Access Portal** directly from the Magento Admin Panel:
-
-Navigate to: 
-`Admin Page → Navbar → QwicPay → Dashboard`
-
-This will take you directly to your merchant dashboard where you can your manage your QwicPay transactions.
 
 ---
 
