@@ -4,19 +4,20 @@
     "type": "magento2-module",
     "version": "2.0.0",
     "license": [
-      "MIT"
+        "MIT"
     ],
     "require": {
-      "php": ">=7.3",
-      "magento/framework": ">=102.0.0"
+        "php": ">=7.3",
+        "magento/framework": ">=102.0.0",
+        "magento/module-payment": ">=100.3.0",
+        "psr/log": "^1.0 || ^2.0 || ^3.0"
     },
     "autoload": {
-      "files": [
-        "registration.php"
-      ],
-      "psr-4": {
-        "Qwicpay\\Checkout\\": ""
-      }
+        "files": [
+            "registration.php"
+        ],
+        "psr-4": {
+            "Qwicpay\\Checkout\\": ""
+        }
     }
-  }
-  
+}

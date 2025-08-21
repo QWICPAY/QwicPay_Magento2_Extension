@@ -18,15 +18,14 @@ class ResponseCodeValidator extends AbstractValidator
      * ResponseCodeValidator constructor.
      * @param ResultInterfaceFactory $resultFactory
      * @param LoggerInterface $logger
-     * @param array $data
      */
     public function __construct(
         ResultInterfaceFactory $resultFactory,
-        LoggerInterface $logger,
-        array $data = []
+        LoggerInterface $logger
     ) {
         $this->logger = $logger;
-        parent::__construct($resultFactory, $data);
+        // The parent constructor only expects the ResultInterfaceFactory parameter.
+        parent::__construct($resultFactory);
     }
 
     /**
