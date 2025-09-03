@@ -123,10 +123,10 @@ class Index extends Action implements CsrfAwareActionInterface
 
         try {
 
-            
+
             // Get the raw JSON body from the request
             $requestBody = $this->getRequest()->getContent();
-            
+
 
             $payload = json_decode($requestBody, true);
             $this->logger->info('Qwicpay Callback: Attempting to decode JSON payload.');
@@ -150,7 +150,7 @@ class Index extends Action implements CsrfAwareActionInterface
                 'qwicpay/general/merchant_key',
                 \Magento\Store\Model\ScopeInterface::SCOPE_STORE
             );
-            
+
 
             // Read KEY header from request
             $requestKey = $this->getRequest()->getHeader('KEY');
@@ -176,10 +176,12 @@ class Index extends Action implements CsrfAwareActionInterface
             }
 
             $orderNumber = $payload['orderNumber'];
+            $stage = $payload['stage'];
+            $paidAmmount = (int) $payload['payment']['totalPaid'];
             $transactionStatus = (int) $payload['payment']['transactionStatus'];
             $transactionId = $payload['payment']['paymentRef'] ?? $payload['transactionid'] ?? uniqid('qwicpay_');
 
-            
+
             $searchCriteria = $this->searchCriteriaBuilder
                 ->addFilter('increment_id', $orderNumber)
                 ->create();
@@ -208,11 +210,22 @@ class Index extends Action implements CsrfAwareActionInterface
                 // Update order status and add a comment
                 $order->setState(Order::STATE_PROCESSING);
                 $order->setStatus($order->getConfig()->getStateDefaultStatus(Order::STATE_PROCESSING));
-                $order->addStatusToHistory(
-                    $order->getStatus(),
-                    __('QwicPay payment completed successfully. Payment Ref: %1.', $transactionId),
-                    true
-                );
+
+
+                if ($stage === "PROD") {
+                    $order->setTotalPaid($paidAmmount);
+                    $order->addStatusToHistory(
+                        $order->getStatus(),
+                        __('QwicPay payment completed successfully. Payment Ref: %1.', $transactionId),
+                        true
+                    );
+                } else {
+                    $order->addStatusToHistory(
+                        $order->getStatus(),
+                        __('THIS IS A TEST ORDER. NO PAYMENT OCCURRED. DO NOT SHIP.'),
+                        false
+                    );
+                }             
 
                 // Save the updated order
                 $this->orderRepository->save($order);

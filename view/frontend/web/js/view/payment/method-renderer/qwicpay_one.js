@@ -43,27 +43,6 @@ define([
         : false;
     },
 
-    /**
-     * Override the default Magento placeOrder function to handle redirection directly.
-     *
-     */
-    placeOrder: function (data, event) {
-      if (event) {
-        event.preventDefault();
-      }
-
-      // Validate the payment method and other checkout steps.
-      if (this.validate() && additionalValidators.validate()) {
-        this.isPlaceOrderActionAllowed(false);
-        fullScreenLoader.startLoader();
-
-        // This is the key change. Instead of calling the API, we will just trigger the redirect.
-        // The redirect will then initiate the payment gateway command on the backend.
-        this.afterPlaceOrder();
-      }
-
-      return false;
-    },
 
     /**
      * This function is called after the place order action, but in our case,
