@@ -1,5 +1,4 @@
 <?php
-// File: app/code/Qwicpay/Checkout/Gateway/Request/RedirectRequest.php
 namespace Qwicpay\Checkout\Gateway\Request;
 
 use Magento\Payment\Gateway\Data\PaymentDataObjectInterface;
@@ -7,7 +6,6 @@ use Magento\Payment\Gateway\Request\BuilderInterface;
 use Magento\Checkout\Model\Session as CheckoutSession;
 use Psr\Log\LoggerInterface;
 use Magento\Framework\UrlInterface;
-use Magento\Framework\App\Action\Context;
 use Magento\Framework\App\Config\ScopeConfigInterface;
 
 class RedirectRequest implements BuilderInterface
@@ -31,8 +29,8 @@ class RedirectRequest implements BuilderInterface
      * @var ScopeConfigInterface
      */
     protected $scopeConfig;
-    
-   /**
+
+    /**
      * @param CheckoutSession $checkoutSession
      * @param UrlInterface $urlBuilder
      * @param LoggerInterface $logger
@@ -51,7 +49,7 @@ class RedirectRequest implements BuilderInterface
     }
 
     /**
-     * Builds the request payload from the order data.
+     * Builds the request payload from the quote data.
      *
      * @param array $buildSubject
      * @return array
@@ -61,49 +59,47 @@ class RedirectRequest implements BuilderInterface
         $this->logger->info('Qwicpay RedirectRequest: Starting request build for callback flow.');
 
         try {
-            /** @var PaymentDataObjectInterface $paymentDataObject */
-            $paymentDataObject = $buildSubject['payment'];
+            // Get the quote from the checkout session
+            $quote = $this->checkoutSession->getQuote();
+            if (!$quote->getId()) {
+                $this->logger->critical('Qwicpay RedirectRequest: No active quote found.');
+                throw new \Exception('No active quote found.');
+            }
 
-            $order = $paymentDataObject->getOrder();
-            $billingAddress = $order->getBillingAddress();
-            
-            // Get the order increment ID for logging purposes
-            $orderIncrementId = $order->getOrderIncrementId();
-            $this->logger->info('Qwicpay RedirectRequest: Order data received for ID ' . $orderIncrementId);
+            $billingAddress = $quote->getBillingAddress();
+            $quoteId = $quote->getId(); // Use quote ID as a unique identifier
+
+            $this->logger->info('Qwicpay RedirectRequest: Quote data received for ID ' . $quoteId);
 
             $userPayload = [
-                "name" => $billingAddress->getFirstname(),
-                "surname" => $billingAddress->getLastname(),
-                "email" => $billingAddress->getEmail()
+                "name" => $billingAddress->getFirstname() ?: 'Guest',
+                "surname" => $billingAddress->getLastname() ?: 'Guest',
+                "email" => $billingAddress->getEmail() ?: $quote->getCustomerEmail()
             ];
-            
+
             if (json_last_error() !== JSON_ERROR_NONE) {
                 $this->logger->critical('Qwicpay RedirectRequest: JSON error in user data: ' . json_last_error_msg());
             }
 
-            
             $billingPayload = [
-                "street" => implode(', ', $billingAddress->getStreet()),
-                "city" => $billingAddress->getCity(),
-                "postalCode" => $billingAddress->getPostcode(),
-                "country" => $billingAddress->getCountryId(),
-                "cell" => $billingAddress->getTelephone()
+                "street" => implode(', ', $billingAddress->getStreet() ?: ['N/A']),
+                "city" => $billingAddress->getCity() ?: 'N/A',
+                "postalCode" => $billingAddress->getPostcode() ?: 'N/A',
+                "country" => $billingAddress->getCountryId() ?: 'ZA',
+                "cell" => $billingAddress->getTelephone() ?: 'N/A'
             ];
-            
+
             if (json_last_error() !== JSON_ERROR_NONE) {
                 $this->logger->critical('Qwicpay RedirectRequest: JSON error in billing data: ' . json_last_error_msg());
             }
 
-            
             $items = [];
-            
-            foreach ($order->getItems() as $item) {
-                // Skip child items of configurable/bundle products to prevent duplicates
+            foreach ($quote->getAllVisibleItems() as $item) {
+                // Skip child items of configurable/bundle products
                 if ($item->getParentItem()) {
                     continue;
                 }
-                
-                // Ensure item data is valid before adding to payload
+
                 if (!$item->getSku() || $item->isDeleted()) {
                     continue;
                 }
@@ -111,14 +107,14 @@ class RedirectRequest implements BuilderInterface
                 $itemArray = [
                     'title' => (string)$item->getName(),
                     'id' => (string)$item->getSku(),
-                    'price' => (int)($item->getPriceInclTax()), // Use price including tax in cents
-                    'quantity' => (int)$item->getQtyOrdered(),
+                    'price' => (int)($item->getPriceInclTax() * 100), // Convert to cents
+                    'quantity' => (int)$item->getQty(),
                 ];
                 $items[] = $itemArray;
-                
             }
+
             $this->logger->info('Qwicpay RedirectRequest: Finished item processing. Total items added: ' . count($items));
-            
+
             if (json_last_error() !== JSON_ERROR_NONE) {
                 $this->logger->critical('Qwicpay RedirectRequest: JSON error in items data: ' . json_last_error_msg());
             }
@@ -127,14 +123,12 @@ class RedirectRequest implements BuilderInterface
             $stage = $this->scopeConfig->getValue('qwicpay/general/stage');
             $this->logger->info('Qwicpay RedirectRequest: Retrieved stage from config -> ' . $stage);
 
-
-            
-            
-            $totalAmount = $order->getGrandTotalAmount()*100;
+            $totalAmount = $quote->getGrandTotal() * 100; // Convert to cents
             $paymentPayload = [
                 "amount" => $totalAmount,
-                "currency" => $order->getCurrencyCode()
+                "currency" => $quote->getQuoteCurrencyCode() ?: 'ZAR'
             ];
+
             $this->logger->info('Qwicpay RedirectRequest: Payment payload -> ' . json_encode($paymentPayload));
             if (json_last_error() !== JSON_ERROR_NONE) {
                 $this->logger->critical('Qwicpay RedirectRequest: JSON error in payment data: ' . json_last_error_msg());
@@ -143,15 +137,14 @@ class RedirectRequest implements BuilderInterface
             // Generate the URL for the backend callback
             $callbackUrl = $this->urlBuilder->getUrl(
                 'qwicpay/callback/index',
-                ['_secure' => true]
+                ['_secure' => true, 'quote_id' => $quoteId]
             );
-            
-            
+
             // Build the final request payload
             $payload = [
                 "platform" => "MAGENTO",
-                "stage" => $stage, 
-                "orderNumber" => $orderIncrementId,
+                "stage" => $stage,
+                "orderNumber" => 'QUOTE_' . $quoteId, // Use quote ID as a temporary identifier
                 "user" => $userPayload,
                 "billing" => $billingPayload,
                 "items" => $items,
@@ -160,16 +153,14 @@ class RedirectRequest implements BuilderInterface
                     "url" => $callbackUrl,
                 ],
             ];
-            
+
             $this->logger->info('Qwicpay RedirectRequest: Final payload built -> ' . json_encode($payload));
 
             return [
                 'payload' => $payload
             ];
-            
         } catch (\Exception $e) {
             $this->logger->critical('Qwicpay RedirectRequest: A fatal error occurred during build: ' . $e->getMessage());
-            // Return an empty payload to prevent further execution in case of an error
             return ['payload' => []];
         }
     }

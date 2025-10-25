@@ -46,6 +46,7 @@ class RedirectHandler implements HandlerInterface
         $redirectUrl = $response['url'];
 
         $payment->setAdditionalInformation('redirect_url', $redirectUrl);
+        $payment->setAdditionalInformation('order_place_redirect_url', $redirectUrl);
         $this->logger->info('Qwicpay RedirectHandler: Saved redirect URL ' . $redirectUrl . ' to order.');
 
         $this->logger->info('Qwicpay RedirectHandler: Handler finished.');

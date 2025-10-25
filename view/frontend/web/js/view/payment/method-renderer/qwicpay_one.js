@@ -48,24 +48,22 @@ define([
      * This function is called after the place order action, but in our case,
      * it's called directly by our overridden placeOrder function.
      */
-    placeOrder: function () {
-      var self = this;
+     placeOrder: function () {
       fullScreenLoader.startLoader();
 
-      placeOrderAction(this.getData(), this.messageContainer)
-        .done(function (orderId) {
-          window.location.replace(
-            "/qwicpay/redirect/index?order_id=" + orderId
-          );
-        })
-        .fail(function (response) {
-          // ... error handling
-        })
-        .always(function () {
-          fullScreenLoader.stopLoader();
-        });
-    },
+      try {
+        // Build URL to your redirect controller
+        var redirectUrl =
+          "/qwicpay/redirect/index?quote_id=" + quote.getQuoteId();
 
+        // Redirect immediately
+        window.location.replace(redirectUrl);
+      } catch (e) {
+        console.error("Qwicpay redirect failed", e);
+      } finally {
+        fullScreenLoader.stopLoader();
+      }
+    },
     getCode: function () {
       return "qwicpay_one";
     },

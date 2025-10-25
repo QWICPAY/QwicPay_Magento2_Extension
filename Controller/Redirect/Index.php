@@ -1,89 +1,87 @@
 <?php
-// File: app/code/Qwicpay/Checkout/Controller/Redirect/Index.php
 namespace Qwicpay\Checkout\Controller\Redirect;
 
-use Magento\Checkout\Model\Session as CheckoutSession;
 use Magento\Framework\App\Action\Action;
 use Magento\Framework\App\Action\Context;
 use Magento\Framework\Controller\ResultFactory;
-use Magento\Framework\Controller\Result\Redirect;
-use Magento\Sales\Api\OrderRepositoryInterface;
+use Magento\Checkout\Model\Session as CheckoutSession;
+use Magento\Quote\Api\CartRepositoryInterface;
+use Magento\Quote\Model\QuoteIdMaskFactory;
 use Psr\Log\LoggerInterface;
 
 class Index extends Action
 {
-    /**
-     * @var CheckoutSession
-     */
-    protected $checkoutSession;
+    private $checkoutSession;
+    private $quoteRepository;
+    private $quoteIdMaskFactory;
+    private $logger;
+    private $paymentMethod;
 
-    /**
-     * @var OrderRepositoryInterface
-     */
-    protected $orderRepository;
-
-    /**
-     * @var LoggerInterface
-     */
-    protected $logger;
-
-    /**
-     * @param Context $context
-     * @param CheckoutSession $checkoutSession
-     * @param OrderRepositoryInterface $orderRepository
-     * @param LoggerInterface $logger
-     */
     public function __construct(
         Context $context,
         CheckoutSession $checkoutSession,
-        OrderRepositoryInterface $orderRepository,
+        CartRepositoryInterface $quoteRepository,
+        QuoteIdMaskFactory $quoteIdMaskFactory,
         LoggerInterface $logger
     ) {
         parent::__construct($context);
         $this->checkoutSession = $checkoutSession;
-        $this->orderRepository = $orderRepository;
+        $this->quoteRepository = $quoteRepository;
+        $this->quoteIdMaskFactory = $quoteIdMaskFactory;
         $this->logger = $logger;
+
+        $this->paymentMethod = $this->_objectManager->get('QwicpayOneGatewayFacade');
     }
 
-    /**
-     * @return Redirect
-     */
     public function execute()
     {
-        /** @var Redirect $resultRedirect */
         $resultRedirect = $this->resultFactory->create(ResultFactory::TYPE_REDIRECT);
+        $maskedId = $this->getRequest()->getParam('quote_id');
+
+        if (!$maskedId) {
+            throw new \Exception('Missing quote_id parameter.');
+        }
 
         try {
-            // Get the order ID directly from the URL parameter
-            $orderId = $this->getRequest()->getParam('order_id');
-            
-            if (!$orderId) {
-                throw new \Exception('No order ID found in the URL.');
+            // Convert masked ID → real ID
+            $quoteIdMask = $this->quoteIdMaskFactory->create()->load($maskedId, 'masked_id');
+            if (!$quoteIdMask->getQuoteId()) {
+                throw new \Exception('Invalid quote ID.');
             }
 
-            // Use the OrderRepository to load the order by its ID.
-            $order = $this->orderRepository->get($orderId);
+            $realQuoteId = $quoteIdMask->getQuoteId();
+            $quote = $this->quoteRepository->get($realQuoteId);
 
-            if (!$order || !$order->getId()) {
-                throw new \Exception('Failed to load order with ID: ' . $orderId);
+            if (!$quote->getIsActive()) {
+                throw new \Exception('Quote is not active.');
             }
 
-            $redirectUrl = $order->getPayment()->getAdditionalInformation('redirect_url');
+            // Set session quote
+            $this->checkoutSession->replaceQuote($quote);
+
+            // Set payment method
+            $payment = $quote->getPayment();
+            $payment->setMethod(\Qwicpay\Checkout\Model\Ui\ConfigProvider::CODE);
+
+            // Set info instance
+            $this->paymentMethod->setInfoInstance($payment);
+
+            // Run initialize command
+            $this->paymentMethod->initialize('authorize', new \Magento\Framework\DataObject());
+
+            // Get redirect URL
+            $redirectUrl = $payment->getAdditionalInformation('order_place_redirect_url');
 
             if (!$redirectUrl) {
-                throw new \Exception(
-                    'No redirect URL found in payment additional information for order #' . $order->getIncrementId()
-                );
+                throw new \Exception('No redirect URL from QwicPay.');
             }
 
-            $this->checkoutSession->clearQuote();
-
-            $this->logger->info('Qwicpay Redirecting to: ' . $redirectUrl);
             $resultRedirect->setUrl($redirectUrl);
+            $this->logger->info('Qwicpay redirecting to: ' . $redirectUrl);
 
         } catch (\Exception $e) {
-            $this->logger->critical('Qwicpay Redirect Error: ' . $e->getMessage());
-            $this->messageManager->addErrorMessage('An error occurred during payment redirection. Please try again.');
+            $this->logger->critical('Qwicpay redirect error: ' . $e->getMessage());
+            $this->messageManager->addErrorMessage('Payment failed. Please try again.');
             $resultRedirect->setPath('checkout/cart');
         }
 
