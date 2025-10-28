@@ -144,7 +144,7 @@ class RedirectRequest implements BuilderInterface
             $payload = [
                 "platform" => "MAGENTO",
                 "stage" => $stage,
-                "orderNumber" => 'QUOTE_' . $quoteId, // Use quote ID as a temporary identifier
+                "orderNumber" =>  $quoteId, // Use quote ID as a temporary identifier
                 "user" => $userPayload,
                 "billing" => $billingPayload,
                 "items" => $items,

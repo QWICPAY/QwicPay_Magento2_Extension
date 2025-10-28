@@ -103,4 +103,6 @@
       <argument name="configInterface" xsi:type="object">QwicpayOneGatewayConfig</argument>
     </arguments>
   </virtualType>
+
+
 </config>

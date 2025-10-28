@@ -1,5 +1,4 @@
 <?php
-// File: app/code/Qwicpay/Checkout/Controller/Callback/Index.php
 namespace Qwicpay\Checkout\Controller\Callback;
 
 use Magento\Framework\App\Action\Action;
@@ -14,49 +13,36 @@ use Magento\Framework\Webapi\Exception as WebapiException;
 use Magento\Sales\Api\OrderRepositoryInterface;
 use Magento\Sales\Model\Order;
 use Magento\Sales\Model\Order\Payment\Transaction;
+use Magento\Sales\Model\Order\Payment\Transaction\BuilderInterface as TransactionBuilder;
 use Psr\Log\LoggerInterface;
 use Magento\Framework\Api\SearchCriteriaBuilder;
 use Magento\Framework\App\Config\ScopeConfigInterface;
 use Magento\Framework\UrlInterface;
-
+use Magento\Quote\Api\CartRepositoryInterface;
+use Magento\Quote\Api\CartManagementInterface;
+use Magento\Quote\Model\Quote;
 
 class Index extends Action implements CsrfAwareActionInterface
 {
-    /**
-     * @var OrderRepositoryInterface
-     */
     protected $orderRepository;
-
-    /**
-     * @var LoggerInterface
-     */
     protected $logger;
-
-    /**
-     * @var SearchCriteriaBuilder
-     */
     protected $searchCriteriaBuilder;
-
-
-
     protected $urlBuilder;
     protected $scopeConfig;
+    protected $quoteRepository;
+    protected $cartManagement;
+    protected $transactionBuilder;
 
-    /**
-     * @param Context $context
-     * @param OrderRepositoryInterface $orderRepository
-     * @param SearchCriteriaBuilder $searchCriteriaBuilder
-     * @param LoggerInterface $logger
-     * @param UrlInterface $urlBuilder
-     * @param ScopeConfigInterface $scopeConfig
-     */
     public function __construct(
         Context $context,
         OrderRepositoryInterface $orderRepository,
         SearchCriteriaBuilder $searchCriteriaBuilder,
         LoggerInterface $logger,
         UrlInterface $urlBuilder,
-        ScopeConfigInterface $scopeConfig
+        ScopeConfigInterface $scopeConfig,
+        CartRepositoryInterface $quoteRepository,
+        CartManagementInterface $cartManagement,
+        TransactionBuilder $transactionBuilder
     ) {
         parent::__construct($context);
         $this->orderRepository = $orderRepository;
@@ -64,57 +50,21 @@ class Index extends Action implements CsrfAwareActionInterface
         $this->logger = $logger;
         $this->urlBuilder = $urlBuilder;
         $this->scopeConfig = $scopeConfig;
+        $this->quoteRepository = $quoteRepository;
+        $this->cartManagement = $cartManagement;
+        $this->transactionBuilder = $transactionBuilder;
     }
-
-    /**
-     * @inheritDoc
-     */
-
 
     public function createCsrfValidationException(RequestInterface $request): ?InvalidRequestException
     {
         return null;
     }
 
-    /**
-     * @inheritDoc
-     */
     public function validateForCsrf(RequestInterface $request): ?bool
     {
         return true;
     }
 
-    /**
-     * Adds a new transaction to the order's payment.
-     *
-     * @param Order $order
-     * @param string $transactionId
-     * @param string $transactionType
-     * @param string $comment
-     * @return void
-     */
-    protected function _addTransaction(Order $order, string $transactionId, string $transactionType, string $comment)
-    {
-        $payment = $order->getPayment();
-        $payment->setLastTransId($transactionId);
-        $payment->setTransactionId($transactionId);
-        $payment->setIsTransactionClosed(0);
-
-        $payment->addTransaction(
-            $transactionType,
-            null,
-            false,
-            $comment
-        );
-
-        $this->orderRepository->save($order);
-    }
-
-    /**
-     * Main action to handle QwicPay's backend-to-backend callback.
-     *
-     * @return Json
-     */
     public function execute()
     {
         /** @var Json $resultJson */
@@ -122,160 +72,266 @@ class Index extends Action implements CsrfAwareActionInterface
         $this->logger->info('Qwicpay Callback: Execution started.');
 
         try {
-
-
-            // Get the raw JSON body from the request
+            // -------------------------------------------------------------
+            // 1. Decode payload
+            // -------------------------------------------------------------
             $requestBody = $this->getRequest()->getContent();
-
-
             $payload = json_decode($requestBody, true);
-            $this->logger->info('Qwicpay Callback: Attempting to decode JSON payload.');
 
             if (json_last_error() !== JSON_ERROR_NONE) {
-                $this->logger->error('Qwicpay Callback: Invalid JSON format received.');
-                throw new WebapiException(
-                    __('Invalid JSON received.'),
-                    0,
-                    WebapiException::HTTP_BAD_REQUEST
-                );
+                throw new WebapiException(__('Invalid JSON received.'), 0, WebapiException::HTTP_BAD_REQUEST);
             }
 
-
-
-            $this->logger->info('Qwicpay Callback: Successfully decoded payload. Starting Auth');
-
-
-            // Fetch merchant key from Magento config
+            // -------------------------------------------------------------
+            // 2. Verify merchant key
+            // -------------------------------------------------------------
             $merchantKey = $this->scopeConfig->getValue(
                 'qwicpay/general/merchant_key',
                 \Magento\Store\Model\ScopeInterface::SCOPE_STORE
             );
-
-
-            // Read KEY header from request
             $requestKey = $this->getRequest()->getHeader('KEY');
 
-            // Compare keys
             if (!$requestKey || $requestKey !== $merchantKey) {
-                $this->logger->critical('Qwicpay Callback: Merchant key mismatch. Expected ' . $merchantKey . ' but got ' . $requestKey);
-                throw new WebapiException(
-                    __('Unauthorized: Invalid merchant key.'),
-                    0,
-                    WebapiException::HTTP_UNAUTHORIZED
-                );
+                $this->logger->critical('Qwicpay Callback: Invalid merchant key.');
+                throw new WebapiException(__('Unauthorized.'), 0, WebapiException::HTTP_UNAUTHORIZED);
             }
 
-            // Validate that required fields exist in the payload
-            if (empty($payload['orderNumber']) || empty($payload['payment']['transactionStatus'])) {
-                $this->logger->critical('Qwicpay Callback: Required payload data (orderNumber or transactionStatus) is missing.');
-                throw new WebapiException(
-                    __('Invalid payload.'),
-                    0,
-                    WebapiException::HTTP_BAD_REQUEST
-                );
+            // -------------------------------------------------------------
+            // 3. Validate required fields
+            // -------------------------------------------------------------
+            if (empty($payload['orderNumber']) || !isset($payload['payment']['transactionStatus'])) {
+                throw new WebapiException(__('Missing required fields.'), 0, WebapiException::HTTP_BAD_REQUEST);
             }
 
             $orderNumber = $payload['orderNumber'];
-            $stage = $payload['stage'];
-            $paidAmmount = (int) $payload['payment']['totalPaid'];
+            $quoteId = (int) preg_replace('/^QUOTE_/', '', $orderNumber);
+            $stage = $payload['stage'] ?? '';
+            $paidAmount = (int) ($payload['payment']['totalPaid'] ?? 0);
             $transactionStatus = (int) $payload['payment']['transactionStatus'];
-            $transactionId = $payload['payment']['paymentRef'] ?? $payload['transactionid'] ?? uniqid('qwicpay_');
+            $transactionId = $payload['payment']['paymentRef']
+                ?? $payload['transactionid']
+                ?? uniqid('qwicpay_');
 
-
-            $searchCriteria = $this->searchCriteriaBuilder
-                ->addFilter('increment_id', $orderNumber)
-                ->create();
-            $orderList = $this->orderRepository->getList($searchCriteria)->getItems();
-
-            $order = count($orderList) > 0 ? array_shift($orderList) : null;
-
-            if (!$order || !$order->getId()) {
-                $this->logger->critical('Qwicpay Callback: Could not find order ' . $orderNumber);
-                throw new LocalizedException(__('Order not found.'));
+            // -------------------------------------------------------------
+            // 4. Load quote
+            // -------------------------------------------------------------
+            try {
+                $quote = $this->quoteRepository->get($quoteId);
+            } catch (\Magento\Framework\Exception\NoSuchEntityException $e) {
+                $this->logger->critical("Qwicpay Callback: Quote ID {$quoteId} not found.");
+                throw new LocalizedException(__('Quote not found.'));
             }
-            $this->logger->info('Qwicpay Callback: Successfully loaded order ' . $orderNumber);
 
-            // Check if the payment was successful (status code 1)
+            // -------------------------------------------------------------
+            // 5. IDEMPOTENCY: Check for existing order FIRST
+            // -------------------------------------------------------------
+            $existingOrder = $this->findExistingOrderByQuoteId($quoteId);
+            if ($existingOrder) {
+                $this->logger->info("Qwicpay Callback: Order {$existingOrder->getIncrementId()} already exists.");
+                return $this->handleExistingOrder($existingOrder, $transactionStatus, $transactionId, $stage, $paidAmount, $resultJson);
+            }
+
+            // -------------------------------------------------------------
+            // 6. Ensure quote has email
+            // -------------------------------------------------------------
+            if (!$quote->getCustomerEmail() && $quote->getBillingAddress()) {
+                $quote->setCustomerEmail($quote->getBillingAddress()->getEmail());
+            }
+            if ($quote->getBillingAddress() && !$quote->getBillingAddress()->getEmail()) {
+                $quote->getBillingAddress()->setEmail($quote->getCustomerEmail());
+            }
+            $quote->setCustomerIsGuest(true);
+
+            // -------------------------------------------------------------
+            // 7. Handle payment result
+            // -------------------------------------------------------------
             if ($transactionStatus === 1) {
-                $this->logger->info('Qwicpay Callback: Payment was successful. Processing order update.');
-
-                // Add a transaction record to the order's payment
-                $this->_addTransaction(
-                    $order,
-                    $transactionId,
-                    Transaction::TYPE_AUTH,
-                    'QwicPay payment completed successfully.'
-                );
-
-                // Update order status and add a comment
-                $order->setState(Order::STATE_PROCESSING);
-                $order->setStatus($order->getConfig()->getStateDefaultStatus(Order::STATE_PROCESSING));
-
-
-                if ($stage === "PROD") {
-                    $order->setTotalPaid($paidAmmount);
-                    $order->addStatusToHistory(
-                        $order->getStatus(),
-                        __('QwicPay payment completed successfully. Payment Ref: %1.', $transactionId),
-                        true
-                    );
-                } else {
-                    $order->addStatusToHistory(
-                        $order->getStatus(),
-                        __('THIS IS A TEST ORDER. NO PAYMENT OCCURRED. DO NOT SHIP.'),
-                        false
-                    );
-                }             
-
-                // Save the updated order
-                $this->orderRepository->save($order);
-                $this->logger->info('Qwicpay Callback: Successfully updated order ' . $orderNumber . ' to processing.');
-
-                // Return a success response to QwicPay
-                // Redirect to success page (checkout success)
-                $redirectUrl = $this->urlBuilder->getUrl(
-                    'qwicpay/guest/track',
-                    [
-                        '_secure' => true,
-                        'order_id' => $order->getIncrementId(),
-                        'email' => $order->getCustomerEmail(),
-                        'lastname' => $order->getCustomerLastname(),
-                        'zip' => $order->getBillingAddress() ? $order->getBillingAddress()->getPostcode() : 'null'
-                    ]
-                );
-
-
-                // OR: redirect to customer’s order view page
-// $redirectUrl = $this->urlBuilder->getUrl('sales/order/view', ['order_id' => $order->getId(), '_secure' => true]);
-
-                $this->logger->info('Qwicpay Callback: Generated redirect URL: ' . $redirectUrl);
-
-                $resultJson->setData([
-                    'status' => 'success',
-                    'redirect' => $redirectUrl
-                ]);
-
+                $result = $this->handleSuccess($quote, $transactionId, $stage, $paidAmount, $resultJson);
             } else {
-                // Payment failed, cancel the order and add a comment
-                $this->logger->info('Qwicpay Callback: Payment failed with status ' . $transactionStatus . '. Cancelling order.');
-                $order->cancel();
-                $order->addStatusToHistory(
-                    Order::STATE_CANCELED,
-                    __('QwicPay payment failed. Transaction Status: %1.', $transactionStatus),
-                    true
-                );
-                $this->orderRepository->save($order);
-
-                $this->logger->info('Qwicpay Callback: Order ' . $orderNumber . ' was canceled due to failed payment.');
-                $resultJson->setData(['status' => 'error', 'message' => 'Payment failed.']);
+                $result = $this->handleFailure($quote, $transactionStatus, $resultJson);
             }
+
+            // -------------------------------------------------------------
+            // 8. Lock quote (prevent reuse)
+            // -------------------------------------------------------------
+            $quote->setIsActive(false);
+            $this->quoteRepository->save($quote);
+            $this->logger->info("Qwicpay Callback: Quote {$quoteId} locked (is_active = 0).");
+
+            return $result;
 
         } catch (\Exception $e) {
-            $this->logger->critical('Qwicpay Callback Error: An exception occurred: ' . $e->getMessage());
+            $this->logger->critical('Qwicpay Callback Error: ' . $e->getMessage(), ['trace' => $e->getTraceAsString()]);
             $resultJson->setHttpResponseCode(WebapiException::HTTP_INTERNAL_ERROR);
             $resultJson->setData(['status' => 'error', 'message' => $e->getMessage()]);
+            return $resultJson;
+        }
+    }
+
+    // -----------------------------------------------------------------
+    // Helper: Find existing order by quote ID
+    // -----------------------------------------------------------------
+    private function findExistingOrderByQuoteId(int $quoteId): ?Order
+    {
+        $searchCriteria = $this->searchCriteriaBuilder
+            ->addFilter('quote_id', $quoteId)
+            ->create();
+        $orderList = $this->orderRepository->getList($searchCriteria)->getItems();
+        return $orderList ? reset($orderList) : null;
+    }
+
+    // -----------------------------------------------------------------
+    // Idempotency: Handle duplicate callbacks
+    // -----------------------------------------------------------------
+    private function handleExistingOrder(
+        Order $order,
+        int $status,
+        string $transactionId,
+        string $stage,
+        int $paidAmount,
+        Json $resultJson
+    ): Json {
+        $this->logger->info("Qwicpay Callback: Order {$order->getIncrementId()} already exists (idempotent).");
+
+        if ($status === 1) {
+            // Add transaction if not exists
+            $payment = $order->getPayment();
+            if (!$payment->getTransaction($transactionId)) {
+                $payment->setTransactionId($transactionId);
+                $payment->setLastTransId($transactionId);
+                $payment->setIsTransactionClosed(false);
+                $payment->addTransaction(Transaction::TYPE_AUTH, null, false, 'QwicPay payment confirmed (idempotent).');
+                $this->orderRepository->save($order);
+            }
+            $resultJson->setData(['status' => 'success', 'orderNumber' => $order->getIncrementId()]);
+        } else {
+            $resultJson->setData(['status' => 'error', 'message' => 'Payment failed.']);
+        }
+        return $resultJson;
+    }
+
+    // -----------------------------------------------------------------
+    // SUCCESS: Create order WITHOUT re-running payment gateway
+    // -----------------------------------------------------------------
+   // In Qwicpay\Checkout\Controller\Callback\Index::handleSuccess()
+
+private function handleSuccess(Quote $quote, string $transactionId, string $stage, int $paidAmount, Json $resultJson): Json
+{
+    try {
+        $this->logger->info('Qwicpay Callback: Success started.');
+        $quoteTotal = $quote->getGrandTotal();
+        $paidAmountInMajorUnits = $paidAmount ;
+        $paidAmountFormatted = number_format($paidAmountInMajorUnits, 4, '.', '');
+        $quoteTotalFormatted = number_format($quoteTotal, 4, '.', '');
+
+             $this->logger->info('Qwicpay Callback: Quote Total {$quoteTotalFormatted}');
+
+        if ($paidAmountFormatted !== $quoteTotalFormatted &&$stage === 'PROD') {
+            $this->logger->info('Qwicpay Callback: Quote Total Match');
+            $this->logger->critical("Qwicpay Callback: SECURITY ERROR. Paid amount ({$paidAmountFormatted}) does not match quote total ({$quoteTotalFormatted}).", [
+                'quote_id' => $quote->getId(),
+                'qwicpay_id' => $transactionId,
+            ]);
+            
+            // Stop processing and throw an exception
+            $resultJson->setData([
+            'status' => 'Error',
+            'error' => "Qwicpay Callback: SECURITY ERROR. Paid amount ({$paidAmountFormatted}) does not match quote total ({$quoteTotalFormatted}).",
+        ]);
+        }
+        
+        $payment = $quote->getPayment();
+        $payment->setMethod('qwicpay_one');
+
+        // CRITICAL STEP: Set the external Qwicpay ID on the payment object.
+        $payment->setTransactionId($transactionId);
+        $payment->setLastTransId($transactionId);
+        $payment->setIsTransactionClosed(false);
+
+        // FLAG: This signals your payment command (CustomRedirectCommand) to skip
+        // the gateway call entirely.
+        $payment->setAdditionalInformation('is_callback_call', true);
+
+        
+
+
+        
+        $this->quoteRepository->save($quote);
+        $this->logger->info("Qwicpay Callback: Quote {$quote->getId()} prepared with Qwicpay ID: {$transactionId}."); 
+
+        // PLACE ORDER: This triggers your payment command, which will skip the gateway
+        // call because of the 'is_callback_call' flag.
+        $orderId = $this->cartManagement->placeOrder($quote->getId());
+        
+        $order = $this->orderRepository->get($orderId);
+        $this->logger->info("Qwicpay Callback: Order successfully placed. ID: {$order->getIncrementId()}.");
+        $this->logger->info("Qwicpay Callback: TotalPaid. {$paidAmountInMajorUnits}.");
+        // NOTE: A transaction linked to the Qwicpay ID should be auto-created here
+        // if your payment method is configured to do so. We just finalize state.
+        
+        // Finalize order state
+        $order->setState(Order::STATE_PROCESSING);
+        $order->setStatus($order->getConfig()->getStateDefaultStatus(Order::STATE_PROCESSING));
+
+        $order->setTotalPaid($paidAmountInMajorUnits);
+        $order->setBaseTotalPaid($paidAmountInMajorUnits);
+
+        if ($stage === 'PROD') {
+            // Add a comment recording the external payment ID
+            $order->addCommentToStatusHistory(
+                __("QwicPay payment completed. External Ref: %1", $transactionId),
+                false,
+                true
+            );
+        } else {
+            $order->addCommentToStatusHistory(
+                __("TEST ORDER – NO PAYMENT. DO NOT SHIP."),
+                false,
+                false
+            );
         }
 
+        $this->orderRepository->save($order);
+        $redirectUrl = $this->buildRedirectUrl($order);
+
+        $resultJson->setData([
+            'status' => 'success',
+            'orderNumber' => $order->getIncrementId(),
+            'redirect' => $redirectUrl
+        ]);
+
+    } catch (\Exception $e) {
+        $resultJson->setData([
+            'status' => 'Error',
+            'error' => $e,
+        ]);
+        
+    }
+
+    return $resultJson;
+}
+
+    // -----------------------------------------------------------------
+    // FAILURE: Lock quote, return error
+    // -----------------------------------------------------------------
+    private function handleFailure(Quote $quote, int $status, Json $resultJson): Json
+    {
+        $this->logger->info("Qwicpay Callback: Payment failed (status {$status}). Quote locked.");
+        $resultJson->setData([
+            'status' => 'error',
+            'message' => 'Payment failed. Please try again.'
+        ]);
         return $resultJson;
+    }
+
+    private function buildRedirectUrl(Order $order): string
+    {
+        return $this->urlBuilder->getUrl('qwicpay/guest/track', [
+            '_secure' => true,
+            'order_id' => $order->getIncrementId(),
+            'email' => $order->getCustomerEmail(),
+            'lastname' => $order->getCustomerLastname(),
+            'zip' => $order->getBillingAddress() ? $order->getBillingAddress()->getPostcode() : 'null'
+        ]);
     }
 }
