@@ -213,103 +213,104 @@ class Index extends Action implements CsrfAwareActionInterface
     // -----------------------------------------------------------------
     // SUCCESS: Create order WITHOUT re-running payment gateway
     // -----------------------------------------------------------------
-   // In Qwicpay\Checkout\Controller\Callback\Index::handleSuccess()
+    // In Qwicpay\Checkout\Controller\Callback\Index::handleSuccess()
 
-private function handleSuccess(Quote $quote, string $transactionId, string $stage, int $paidAmount, Json $resultJson): Json
-{
-    try {
-        $this->logger->info('Qwicpay Callback: Success started.');
-        $quoteTotal = $quote->getGrandTotal();
-        $paidAmountInMajorUnits = $paidAmount ;
-        $paidAmountFormatted = number_format($paidAmountInMajorUnits, 4, '.', '');
-        $quoteTotalFormatted = number_format($quoteTotal, 4, '.', '');
+    private function handleSuccess(Quote $quote, string $transactionId, string $stage, int $paidAmount, Json $resultJson): Json
+    {
+        try {
+            $this->logger->info('Qwicpay Callback: Success started.');
+            $quoteTotal = $quote->getGrandTotal();
+            $paidAmountInMajorUnits = $paidAmount;
+            $paidAmountFormatted = number_format($paidAmountInMajorUnits, 4, '.', '');
+            $quoteTotalFormatted = number_format($quoteTotal, 4, '.', '');
 
-             $this->logger->info('Qwicpay Callback: Quote Total {$quoteTotalFormatted}');
+            $this->logger->info('Qwicpay Callback: Quote Total {$quoteTotalFormatted}');
 
-        if ($paidAmountFormatted !== $quoteTotalFormatted &&$stage === 'PROD') {
+            if ($paidAmountFormatted !== $quoteTotalFormatted && $stage === 'PROD') {
+
+                $this->logger->critical("Qwicpay Callback: SECURITY ERROR. Paid amount ({$paidAmountFormatted}) does not match quote total ({$quoteTotalFormatted}).", [
+                    'quote_id' => $quote->getId(),
+                    'qwicpay_id' => $transactionId,
+                ]);
+
+                // Stop processing and throw an exception
+                $resultJson->setData([
+                    'status' => 'error',
+                    'error' => "Qwicpay Callback: SECURITY ERROR. Paid amount ({$paidAmountFormatted}) does not match quote total ({$quoteTotalFormatted}).",
+                ]);
+                return $resultJson;
+            }
             $this->logger->info('Qwicpay Callback: Quote Total Match');
-            $this->logger->critical("Qwicpay Callback: SECURITY ERROR. Paid amount ({$paidAmountFormatted}) does not match quote total ({$quoteTotalFormatted}).", [
-                'quote_id' => $quote->getId(),
-                'qwicpay_id' => $transactionId,
-            ]);
-            
-            // Stop processing and throw an exception
+            $payment = $quote->getPayment();
+            $payment->setMethod('qwicpay_one');
+
+            // CRITICAL STEP: Set the external Qwicpay ID on the payment object.
+            $payment->setTransactionId($transactionId);
+            $payment->setLastTransId($transactionId);
+            $payment->setIsTransactionClosed(false);
+
+            // FLAG: This signals your payment command (CustomRedirectCommand) to skip
+            // the gateway call entirely.
+            $payment->setAdditionalInformation('is_callback_call', true);
+
+
+
+
+
+            $this->quoteRepository->save($quote);
+            $this->logger->info("Qwicpay Callback: Quote {$quote->getId()} prepared with Qwicpay ID: {$transactionId}.");
+
+            // PLACE ORDER: This triggers your payment command, which will skip the gateway
+            // call because of the 'is_callback_call' flag.
+            $orderId = $this->cartManagement->placeOrder($quote->getId());
+
+            $order = $this->orderRepository->get($orderId);
+            $this->logger->info("Qwicpay Callback: Order successfully placed. ID: {$order->getIncrementId()}.");
+            $this->logger->info("Qwicpay Callback: TotalPaid. {$paidAmountInMajorUnits}.");
+            // NOTE: A transaction linked to the Qwicpay ID should be auto-created here
+            // if your payment method is configured to do so. We just finalize state.
+
+            // Finalize order state
+            $order->setState(Order::STATE_PROCESSING);
+            $order->setStatus($order->getConfig()->getStateDefaultStatus(Order::STATE_PROCESSING));
+
+            $order->setTotalPaid($paidAmountInMajorUnits);
+            $order->setBaseTotalPaid($paidAmountInMajorUnits);
+
+            if ($stage === 'PROD') {
+                // Add a comment recording the external payment ID
+                $order->addCommentToStatusHistory(
+                    __("QwicPay payment completed. External Ref: %1", $transactionId),
+                    false,
+                    true
+                );
+            } else {
+                $order->addCommentToStatusHistory(
+                    __("TEST ORDER – NO PAYMENT. DO NOT SHIP."),
+                    false,
+                    false
+                );
+            }
+
+            $this->orderRepository->save($order);
+            $redirectUrl = $this->buildRedirectUrl($order);
+
             $resultJson->setData([
-            'status' => 'Error',
-            'error' => "Qwicpay Callback: SECURITY ERROR. Paid amount ({$paidAmountFormatted}) does not match quote total ({$quoteTotalFormatted}).",
-        ]);
-        }
-        
-        $payment = $quote->getPayment();
-        $payment->setMethod('qwicpay_one');
+                'status' => 'success',
+                'orderNumber' => $order->getIncrementId(),
+                'redirect' => $redirectUrl
+            ]);
 
-        // CRITICAL STEP: Set the external Qwicpay ID on the payment object.
-        $payment->setTransactionId($transactionId);
-        $payment->setLastTransId($transactionId);
-        $payment->setIsTransactionClosed(false);
+        } catch (\Exception $e) {
+            $resultJson->setData([
+                'status' => 'error',
+                'error' => $e,
+            ]);
 
-        // FLAG: This signals your payment command (CustomRedirectCommand) to skip
-        // the gateway call entirely.
-        $payment->setAdditionalInformation('is_callback_call', true);
-
-        
-
-
-        
-        $this->quoteRepository->save($quote);
-        $this->logger->info("Qwicpay Callback: Quote {$quote->getId()} prepared with Qwicpay ID: {$transactionId}."); 
-
-        // PLACE ORDER: This triggers your payment command, which will skip the gateway
-        // call because of the 'is_callback_call' flag.
-        $orderId = $this->cartManagement->placeOrder($quote->getId());
-        
-        $order = $this->orderRepository->get($orderId);
-        $this->logger->info("Qwicpay Callback: Order successfully placed. ID: {$order->getIncrementId()}.");
-        $this->logger->info("Qwicpay Callback: TotalPaid. {$paidAmountInMajorUnits}.");
-        // NOTE: A transaction linked to the Qwicpay ID should be auto-created here
-        // if your payment method is configured to do so. We just finalize state.
-        
-        // Finalize order state
-        $order->setState(Order::STATE_PROCESSING);
-        $order->setStatus($order->getConfig()->getStateDefaultStatus(Order::STATE_PROCESSING));
-
-        $order->setTotalPaid($paidAmountInMajorUnits);
-        $order->setBaseTotalPaid($paidAmountInMajorUnits);
-
-        if ($stage === 'PROD') {
-            // Add a comment recording the external payment ID
-            $order->addCommentToStatusHistory(
-                __("QwicPay payment completed. External Ref: %1", $transactionId),
-                false,
-                true
-            );
-        } else {
-            $order->addCommentToStatusHistory(
-                __("TEST ORDER – NO PAYMENT. DO NOT SHIP."),
-                false,
-                false
-            );
         }
 
-        $this->orderRepository->save($order);
-        $redirectUrl = $this->buildRedirectUrl($order);
-
-        $resultJson->setData([
-            'status' => 'success',
-            'orderNumber' => $order->getIncrementId(),
-            'redirect' => $redirectUrl
-        ]);
-
-    } catch (\Exception $e) {
-        $resultJson->setData([
-            'status' => 'Error',
-            'error' => $e,
-        ]);
-        
+        return $resultJson;
     }
-
-    return $resultJson;
-}
 
     // -----------------------------------------------------------------
     // FAILURE: Lock quote, return error
