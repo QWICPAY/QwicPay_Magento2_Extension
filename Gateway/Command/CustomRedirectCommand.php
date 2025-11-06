@@ -80,7 +80,9 @@ class CustomRedirectCommand extends GatewayCommand implements CommandInterface
 
         // Check if this execution is triggered by the callback controller (post-payment)
         if ($payment->getAdditionalInformation('is_callback_call')) {
-            $this->logger?->info('Qwicpay CustomRedirectCommand: SKIPPING gateway call (Callback detected).');
+            if ($this->logger) {
+                $this->logger->info('Qwicpay CustomRedirectCommand: SKIPPING gateway call (Callback detected).');
+            }
             
             // Critical: If it's a callback, we have nothing more to do here. 
             // The order placement will proceed without initiating a new redirect.
@@ -91,19 +93,27 @@ class CustomRedirectCommand extends GatewayCommand implements CommandInterface
         // Initial Checkout Call: Proceed to request a redirect URL
         // -------------------------------------------------------------------
 
-        $this->logger?->info('Qwicpay CustomRedirectCommand: execute() called (Initial checkout).');
+        if ($this->logger) {
+            $this->logger->info('Qwicpay CustomRedirectCommand: execute() called (Initial checkout).');
+        }
 
         // Build request payload (e.g., amount, quote ID, callback URLs)
         $request = $this->requestBuilder->build($commandSubject);
-        $this->logger?->info('Qwicpay CustomRedirectCommand: request built', ['request' => $request]);
+        if ($this->logger) {
+            $this->logger->info('Qwicpay CustomRedirectCommand: request built', ['request' => $request]);
+        }
 
         // Use transfer factory
         $transfer = $this->transferFactory->create($request);
-        $this->logger?->info('Qwicpay CustomRedirectCommand: transfer object created');
+        if ($this->logger) {
+            $this->logger->info('Qwicpay CustomRedirectCommand: transfer object created');
+        }
 
         // Send request to Qwicpay API
         $response = $this->client->placeRequest($transfer);
-        $this->logger?->info('Qwicpay CustomRedirectCommand: response received', ['response' => (array) $response]);
+        if ($this->logger) {
+            $this->logger->info('Qwicpay CustomRedirectCommand: response received', ['response' => (array) $response]);
+        }
         
         $validationSubject = ['response' => $response];
         
@@ -112,7 +122,9 @@ class CustomRedirectCommand extends GatewayCommand implements CommandInterface
             $result = $this->validator->validate($validationSubject);
             if (!$result->isValid()) {
                 // Log failure details
-                $this->logger?->critical('Qwicpay CustomRedirectCommand: Validation failed.', ['errors' => $result->getFailsDescription()]);
+                if ($this->logger) {
+                    $this->logger->critical('Qwicpay CustomRedirectCommand: Validation failed.', ['errors' => $result->getFailsDescription()]);
+                }
                 
                 throw new \Magento\Payment\Gateway\Command\CommandException(
                     __('Payment processing failed. Please try a different payment method or contact support.')
